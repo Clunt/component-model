@@ -1,69 +1,44 @@
-# The `wit` format
+# `wit`格式
 
-The Wasm Interface Type (WIT) format is an [IDL] to provide tooling for the
-[WebAssembly Component Model][components] in two primary ways:
+Wasm接口类型（Wasm Interface Type, WIT）格式是一种[IDL]，它以两种主要方式为[WebAssembly组件模型][components]提供工具：
 
-* WIT is a developer-friendly format to describe the imports and exports to a
-  component. It is easy to read and write and provides the foundational basis
-  for producing components from guest languages as well as consuming components
-  in host languages.
+* WIT是一种开发人员友好的格式，用于描述组件的导入和导出。其易于阅读和编写，并为使用客户语言生成组件以及使用宿主语言使用组件提供了基础。
 
-* WIT packages are the basis of sharing types and definitions in an ecosystem of
-  components. Authors can import types from other WIT packages when generating a
-  component, publish a WIT package representing a host embedding, or collaborate
-  on a WIT definition of a shared set of APIs between platforms.
+* WIT包是组件生态系统中共享类型和定义的基础。作者可以在生成组件时从其他WIT包导入类型，发布表示宿主嵌入的WIT包，或者协作制定跨平台共享API集的WIT定义。
 
-A WIT package is a collection of WIT [`interface`s][interfaces] and
-[`world`s][worlds] defined in files in the same directory that all use the
-file extension `wit`, for example `foo.wit`. Files are encoded as valid utf-8
-bytes. Types can be imported between interfaces within a package using
-unqualified names and additionally from other packages through namespace-
-and-package-qualified names.
+WIT包是在同一目录下以`wit`为扩展名的文件集合，其中定义了[`interfaces`][interfaces]和[`world`][worlds]，例如`foo.wit`。文件编码为有效的 utf-8 字节。可以使用非限定名称在包内的接口之间导入类型，还可以通过命名空间（namespace-
+and-package-qualified）和包限定名称从其他包导入类型。
 
-This document will go through the purpose of the syntactic constructs of a WIT
-document, a pseudo-formal [grammar specification][lexical-structure], and
-additionally a specification of the [package format][package-format] of a WIT
-package suitable for distribution.
+本文档将介绍WIT文档的句法结构的用途、伪形式[语法规范][lexical-structure]，以及适合分发的WIT包的[包格式(package format)][package-format]的规范。
 
 [IDL]: https://en.wikipedia.org/wiki/Interface_description_language
 [components]: https://github.com/webassembly/component-model
 
-## Package Names
+## 包名（Package Names）
 
-All WIT packages are assigned a *package name*. Package names look like
-`foo:bar@1.0.0` and have three fields:
+所有WIT包均分配一个*包名*。包名类似于`foo:bar@1.0.0`，包含三个字段：
 
-* A *namespace field*, for example `foo` in `foo:bar`. This namespace is
-  intended to disambiguate between registries, top-level organizations, etc.
-  For example WASI interfaces use the `wasi` namespace.
+* *命名空间字段（namespace field）*，例如`foo:bar`中的`foo`。此命名空间旨在消除注册表、顶层组织等之间的歧义。例如，WASI接口（WASI interfaces）使用`wasi`命名空间。
 
-* A *package field*, for example `clocks` in `wasi:clocks`. A "package" groups
-  together a set of interfaces and worlds that would otherwise be named with a
-  common prefix.
+* *包字段（package field）*，例如`wasi:clocks`中的`clocks`。“包”将一组interfaces和worlds组合在一起，否则它们会使用共同的前缀命名。
 
-* An optional *version field*, specified as [full semver](https://semver.org/).
+* *版本字段（version field）*[可选的], 定义为[full semver](https://semver.org/).
 
-🪺 With "nested namespaces and packages", package names are generalized to look
-like `foo:bar:baz/quux`, where `bar` is a nested namespace of `foo` and `quux`
-is a nested package of `baz`. See the [package declaration] section for more
-details.
+🪺 使用“嵌套命名空间和包”，包名称类似于`foo:bar:baz/quux`，其中`bar`是`foo`的嵌套命名空间、`quux`是`baz`的嵌套包。有关更多详细信息，请参阅[包声明]部分。
 
-Package names are specified at the top of a WIT file via a `package`
-declaration:
+通过在WIT文件顶部声明`package`指定包名：
 
 ```wit
 package wasi:clocks;
 ```
 
-or
+或者
 
 ```wit
 package wasi:clocks@1.2.0;
 ```
 
-WIT packages can be defined in a collection of files. At least one of these
-files must specify a package name. Multiple files can specify the `package`,
-though they must all agree on what the package name is.
+WIT包可以由一组文件定义，且至少有一个文件须指定包名。多个文件可以指定`package`，但它们必须统一包名。
 
 Alternatively, many packages can be declared consecutively in one or more
 files, if the "explicit" package notation is used:
@@ -78,22 +53,16 @@ package local:b {
 }
 ```
 
-Package names are used to generate the [names of imports and exports]
-in the Component Model's representation of [`interface`s][interfaces] and
-[`world`s][worlds] as described [below](#package-format).
+包名用于生成在组件模型中代表[导入名和导出名]的[`接口(interface)`][interfaces]和[`世界(world)`][worlds]，具体描述[如下](#package-format)。
 
-[names of imports and exports]: Explainer.md#import-and-export-definitions
+[导入名和导出名]: Explainer.md#import-and-export-definitions
 
-## WIT Interfaces
+## WIT接口（Interfaces）
 [interfaces]: #wit-interfaces
 
-The concept of an "interface" is central in WIT as a collection of [functions]
-and [types]. An interface can be thought of as an instance in the WebAssembly
-Component Model, for example a unit of functionality imported from the host or
-implemented by a component for consumption on a host. All functions and types
-belong to an interface.
+“接口”的概念是WIT的核心，它是[函数(functions)]和[类型(types)]的集合。接口可以被视为WebAssembly组件模型中的一个实例，例如从宿主导入或由组件实现的供宿主使用的功能单元。所有函数和类型都属于接口。
 
-An example of an interface is:
+接口示例：
 
 ```wit
 package local:demo;
@@ -103,9 +72,7 @@ interface host {
 }
 ```
 
-represents an interface called `host` which provides one function, `log`, which
-takes a single `string` argument. If this were imported into a component then it
-would correspond to:
+表示一个名为`host`的接口，它提供一个函数`log`，该函数接受一个`string`参数。如果将其导入到组件中，则它将对应于：
 
 ```wasm
 (component
@@ -116,8 +83,7 @@ would correspond to:
 )
 ```
 
-An `interface` can contain [`use`][use] statements, [type][types] definitions,
-and [function][functions] definitions. For example:
+一个接口`interface`可以包含[`use`][use]语句, [type][types]定义和[function][functions]定义。例如：
 
 ```wit
 package wasi:filesystem;
@@ -136,25 +102,14 @@ interface types {
 }
 ```
 
-More information about [`use`][use] and [types] are described below, but this
-is an example of a collection of items within an `interface`. All items defined
-in an `interface`, including [`use`][use] items, are considered as exports from
-the interface. This means that types can further be used from the interface by
-other interfaces. An interface has a single namespace which means that none of
-the defined names can collide.
+有关[`use`][use]和[types]的更多信息将在下文中介绍，但这是`interface`中项目集合的示例。`interface`中定义的所有项目（包括[`use`][use]），均被视为接口的导出。这意味着此interface的types可被其他interface使用。接口具有单个命名空间，这意味着定义的名称都不会发生冲突。
 
-A WIT package can contain any number of interfaces listed at the top-level and
-in any order. The WIT validator will ensure that all references between
-interfaces are well-formed and acyclic.
+WIT包可以包含任意数量的接口(interface)，这些接口在顶层列出且顺序任意。WIT验证器将确保接口之间的所有引用都是格式正确且无循环的。
 
-## WIT Worlds
+## WIT世界（Worlds）
 [worlds]: #wit-worlds
 
-WIT packages can contain `world` definitions at the top-level in addition to
-[`interface`][interfaces] definitions. A world is a complete description of
-both imports and exports of a component. A world can be thought of as an
-equivalent of a `component` type in the component model. For example this
-world:
+除了[`interface`][interfaces]定义之外，WIT包还可以在顶层包含`world`定义。world是组件导入和导出的完整描述。世界(world)可以被视为组件模型中`component`类型的等价物。例如：
 
 ```wit
 package local:demo;
@@ -168,7 +123,7 @@ world my-world {
 }
 ```
 
-can be thought of as this component type:
+可以视为如下组件类型(component type)：
 
 ```wasm
 (type $my-world (component
@@ -179,12 +134,9 @@ can be thought of as this component type:
 ))
 ```
 
-Worlds describe a concrete component and are the basis of bindings generation. A
-guest language will use a `world` to determine what functions are imported, what
-they're named, and what functions are exported, in addition to their names.
+世界描述了一个具体的组件，是生成绑定的基础。客户语言将使用`world`来确定导入并命名哪些函数、导出哪些函数及其名称。
 
-Worlds can contain any number of imports and exports, and can be either a
-function or an interface.
+世界可以包含任意数量的导入和导出，并且可以是函数(function)或接口(interface)。
 
 ```wit
 package local:demo;
@@ -199,13 +151,9 @@ world command {
 }
 ```
 
-More information about the `wasi:random/random` syntax is available below in the
-description of [`use`][use].
+有关`wasi:random/random`语法的更多信息，请参阅下方[`use`][use]描述。
 
-An imported or exported interface corresponds to an imported or exported
-instance in the component model. Functions are equivalent to bare component
-functions. Additionally interfaces can be defined inline with an explicit
-[plain name] that avoids the need to have an out-of-line definition.
+导入或导出接口对应于组件模型中的导入或导出实例。函数相当于裸组件函数(bare component functions)。此外，接口可以用显式的[简单名称(plain name)][plain name]内联定义，从而避免了外联定义需要。
 
 ```wit
 package local:demo;
@@ -216,18 +164,16 @@ interface out-of-line {
 
 world your-world {
   import out-of-line;
-  // ... is roughly equivalent to ...
+  // ... 大致相当于 ...
   import out-of-line: interface {
     the-function: func();
   }
 }
 ```
 
-The plain name of an `import` or `export` statement is used as the plain name
-of the final component `import` or `export` definition.
+`import`或`export`语句的简单名称用于组件`import`或`export`最终定义的简单名称。
 
-In the component model imports to a component either use a plain or interface
-name, and in WIT this is reflected in the syntax:
+在组件模型中导入组件可以使用简单名称(plain name)或接口名称(interface name)，在WIT中对应的语法：
 
 ```wit
 package local:demo;
@@ -237,34 +183,31 @@ interface my-interface {
 }
 
 world command {
-  // generates an import of the name `local:demo/my-interface`
+  // 生成导入接口名称 `local:demo/my-interface`
   import my-interface;
 
-  // generates an import of the name `wasi:filesystem/types`
+  // 生成导入接口名称 `wasi:filesystem/types`
   import wasi:filesystem/types;
 
-  // generates an import of the plain name `foo`
+  // 生成导入简单名称 `foo`
   import foo: func();
 
-  // generates an import of the plain name `bar`
+  // 生成导入简单名称 `bar`
   import bar: interface {
     // ...
   }
 }
 ```
 
-Each name must be case-insensitively unique in the scope in which it is
-declared. In the case of worlds, all imported names are in the same scope,
-but separate from all the export names, and thus the same name can *not* be
-imported twice, but *can* be both imported and exported.
+每个名称在声明的范围内必须是唯一的（不区分大小写）。在world中，所有导入的名称都在同一范围内，但区分于所有导出的名称，因此同一个名称*不能*导入两次，但*能够*同时导出并导出。
 
 [Plain Name]: Explainer.md#import-and-export-definitions
 
-### Union of Worlds with `include`
+### 通过`include`合并多个世界(world)
 
-A World can be created by taking the union of two or more worlds. This operation allows world builders to form larger worlds from smaller worlds.
+可以通过合并两个或多个world来创建一个world。此操作允许从较小的world构建更大的world。
 
-Below is a simple example of a world that includes two other worlds.
+下面是一个world包含另外两个world的简单示例。
 
 ```wit
 package local:demo;
@@ -289,9 +232,9 @@ world union-my-world {
 }
 ```
 
-The `include` statement is used to include the imports and exports of another World to the current World. It says that the new World should be able to run all components that target the included worlds and more.
+该`include`语句用于将另一个world的导入和导出引入当前world。它表示新world能够运行针对所包含world的所有组件等。
 
-The `union-my-world` World defined above is equivalent to the following World:
+上面定义的`union-my-world`等同于下面的world：
 
 ```wit
 world union-my-world {
@@ -304,12 +247,9 @@ world union-my-world {
 }
 ```
 
-### De-duplication of interfaces
+### 接口去重
 
-If two worlds share an imported or exported [interface name], then the union of
-the two worlds will only contain one copy of that imported or exported name.
-For example, the following two worlds `union-my-world-a` and `union-my-world-b`
-are equivalent:
+如果两个world共享一个导入或导出[接口名称][interface name]，则两个world的并集将金包含该导入或导出名称的一个副本。例如，下面的两个世界`union-my-world-a`和`union-my-world-b`是等效的：
 
 ```wit
 package local:demo;
@@ -335,16 +275,11 @@ world union-my-world-b {
 }
 ```
 
-### Name Conflicts and `with`
+### 名称冲突及`with`
 
-When two or more included Worlds have the same name for an import or export
-with a *plain* name, automatic de-duplication cannot be used (because the two
-same-named imports/exports might have different meanings in the different
-worlds) and thus the conflict has to be resolved manually using the `with`
-keyword.
+当两个或多个包含的world对于具有*plain* name的导入或导出具有相同的名称时，不能使用自动重复数据删除（因为两个同名的导入/导出在不同的 World 中可能有不同的含义），因此必须使用关键字`with`手动解决冲突。
 
-The following example shows how to resolve name conflicts where
-`union-my-world-a` and `union-my-world-b` are equivalent:
+以下示例说明如何解决`union-my-world-a`和`union-my-world-b`等效的名称冲突：
 ```wit
 package local:demo;
 
@@ -362,8 +297,7 @@ world union-my-world-b {
 }
 ```
 
-`with` cannot be used to rename interface names, however, so the following
-world would be invalid:
+但是`with`不能用于重命名接口名称，因此以下世界将是无效的：
 ```wit
 package local:demo;
 
@@ -376,16 +310,16 @@ world world-using-a {
 }
 
 world invalid-union-world {
-    include my-using-a with { a as b }  // invalid: 'a', which is short for 'local:demo/a', is an interface name
+    include my-using-a with { a as b }  // invalid: 'a'是'local:demo/a'的缩写，是一个接口名称
 }
 
 ```
 
-### A Note on Subtyping
+### 关于子类型的注释
 
-In the future, when `optional` export is supported, the world author may explicitly mark exports as optional to make a component targeting an included World a subtype of the union World.
+将来当支持导出`optional`时，world作者可能会明确将导出标记为可选，以使针对包含的世界的组件成为union world的子类型。
 
-For now, we are not following the subtyping rules for the `include` statement. That is, the `include` statement does not imply any subtyping relationship between the included worlds and the union world.
+目前，我们不遵循该`include`语句的子类型规则。也就是说，该`include`语句不暗示所包含的世界与联合世界之间的任何子类型关系。
 
 ## WIT Packages and `use`
 [use]: #wit-packages-and-use
@@ -642,7 +576,7 @@ interface a {
   resource r;
 }
 interface b {
-  use a.{r}; 
+  use a.{r};
   foo: func() -> r;
 }
 
