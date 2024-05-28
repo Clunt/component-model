@@ -1,26 +1,15 @@
 # FAQ
 
-### How does WASI relate to the Component Model?
+### WASI 与组件模型有何关系？
 
-[WASI] is layered on top of the Component Model, with the Component Model
-providing the foundational building blocks used to define WASI's interfaces,
-including:
-* the grammar of types that can be used in WASI interfaces;
-* the linking functionality that WASI can assume is used to compose separate
-  modules of code, isolate their capabilities and virtualize WASI interfaces;
-* the core wasm ABI that core wasm toolchains can compile against when targeting WASI.
+[WASI]位于组件模型之上，组件模型提供了用于定义 WASI 接口的基础构建块，包括：
+* WASI 接口中可以使用的类型语法；
+* WASI 可以承担的链接功能用于组成单独的代码模块、隔离其功能并虚拟化 WASI 接口；
+* 当针对 WASI 时，核心 wasm 工具链可以编译的核心 wasm ABI。
 
-By way of comparison to traditional Operating Systems, the Component Model
-fills the role of an OS's process model (defining how processes start up and
-communicate with each other) while WASI fills the role of an OS's many I/O
-interfaces.
+与传统操作系统相比，组件模型充当操作系统的进程模型（定义进程如何启动和相互通信），而 WASI 充当操作系统的许多 I/O 接口。
 
-Use of WASI does not force the client to target the Component Model, however.
-Any core wasm producer can simply target the core wasm ABI defined by the
-Component Model for a given WASI interface's signature. This approach reopens
-many questions that are answered by the Component Model, particularly when more
-than one wasm module is involved, but for single-module scenarios or highly
-custom scenarios, this might be appropriate.
+但是，使用 WASI 不会强制客户端以组件模型为目标。任何核心 wasm 生产者都可以简单地以组件模型为给定 WASI 接口签名定义的核心 wasm ABI 为目标。这种方法重新提出了组件模型所回答的许多问题，特别是当涉及多个 wasm 模块时，但对于单模块场景或高度自定义的场景，这可能是合适的。
 
 
 [WASI]: https://github.com/WebAssembly/WASI/blob/main/README.md
