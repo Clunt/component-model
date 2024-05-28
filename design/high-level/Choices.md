@@ -1,34 +1,11 @@
-# Component Model High-Level Design Choices
+# 组件模型的高层设计选择
 
-Based on the [goals](Goals.md) and [use cases](UseCases.md), the component
-model makes several high-level design choices that permeate the rest of the
-component model.
+根据[目标](Goals.md)和[使用案例](UseCases.md)，组件模型做出了一些高层设计选择，这些选择渗透到了组件模型的其余部分。
 
-1. The component model adopts a shared-nothing architecture in which component
-   instances fully encapsulate their linear memories, tables, globals and, in
-   the future, GC memory. Component interfaces contain only immutable copied
-   values, opaque typed handles and immutable uninstantiated modules/components.
-   While handles and imports can be used as an indirect form of sharing, the
-   [dependency use cases](UseCases.md#component-dependencies) enable this degree
-   of sharing to be finely controlled.
+1. 组件模型采用无共享架构，其中组件实例完全封装其线性内存、表、全局变量以及未来的 GC 内存。组件接口仅包含不可变的复制值、不透明类型的句柄和不可变的未实例化模块/组件。虽然句柄和导入可以用作间接共享形式，但[依赖项](UseCases.md#组件依赖关系)可以精细控制这种程度的共享。
 
-2. The component model introduces no global singletons, namespaces, registries,
-   locator services or frameworks through which components are configured or
-   linked. Instead, all related use cases are addressed through explicit
-   parametrization of components via imports (of data, functions, and types)
-   with every client of a component having the option to independently
-   instantiate the component with its own chosen import values.
+2. 组件模型不引入用于配置或链接组件的全局单例、命名空间、注册表、定位器服务或框架。相反，所有相关用例都通过导入（数据、函数和类型）显式参数化组件来解决，每个组件的客户端都可以选择使用自己选择的导入值独立实例化组件。
 
-3. The component model assumes no global inter-component garbage or cycle
-   collector that is able to trace through cross-component cycles. Instead
-   resources have lifetimes and require explicit acyclic ownership through
-   handles. The explicit lifetimes allow resources to have destructors that are
-   called deterministically and can be used to release linear memory
-   allocations in non-garbage-collected languages.
+3. 组件模型假设没有能够跟踪跨组件循环的全局组件间垃圾或循环收集器。相反，资源具有生命周期，并且需要通过句柄显式非循环所有权。显式生命周期允许资源具有确定性调用的析构函数，并且可用于释放非垃圾收集语言中的线性内存分配。
 
-4. The component model assumes that Just-In-Time compilation is not available
-   at runtime and thus only provides declarative linking features that admit
-   Ahead-of-Time compilation, optimization and analysis. While component instances
-   can be created at runtime, the components being instantiated as well as their
-   dependencies and clients are known before execution begins.
-   (See also [this slide](https://docs.google.com/presentation/d/1PSC3Q5oFsJEaYyV5lNJvVgh-SNxhySWUqZ6puyojMi8/edit#slide=id.gceaf867ebf_0_10).)
+4. 组件模型假设运行时无法进行即时编译，因此仅提供声明性链接功能，允许提前编译、优化和分析。虽然可以在运行时创建组件实例，但在执行开始之前，实例化的组件及其依赖项和客户端都是已知的。（另请参阅[幻灯片](https://docs.google.com/presentation/d/1PSC3Q5oFsJEaYyV5lNJvVgh-SNxhySWUqZ6puyojMi8/edit#slide=id.gceaf867ebf_0_10)）
