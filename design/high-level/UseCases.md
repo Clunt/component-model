@@ -8,325 +8,140 @@
 
 组件的一种使用方式是被主机（嵌入 wasm 运行时的应用程序、系统或服务）直接实例化和执行，使用组件模型提供通用格式和工具链，这样每个不同的主机不必定义自己的自定义约定和工具集来解决相同的问题。
 
-#### Value propositions to hosts for embedding components
+#### 向主机提供嵌入组件的价值主张
 
-First, it's useful to enumerate some use cases for why the host wants to run
-wasm in the first place (instead of using an alternative virtualization or
-sandboxing technology):
+首先，列举一些主机首先想要运行 wasm 的用例很有用（而不是使用其他虚拟化或沙盒技术）：
 
-1. A native language runtime (like node.js or CPython) uses components as a
-   portable, sandboxed alternative to the runtime's native plugins, avoiding the
-   portability and security problems of native plugins.
-2. A serverless platform wishing to move code closer to data or clients uses
-   wasm components in place of a fixed scripting language, leveraging wasm's
-   strong sandboxing and language neutrality.
-3. A serverless platform wishing to spin up fresh execution contexts at high
-   volume with low latency uses wasm components due to their low overhead and fast
-   instantiation.
-4. A system or service adds support for efficient, multi-language "scripting"
-   with only a modest amount of engineering effort by embedding an existing
-   component runtime, reusing existing WASI standards support where applicable.
-5. A large application decouples the updating of modular pieces of the
-   application from the updating of the natively-installed base application,
-   by distributing and running the modular pieces as wasm components.
-6. A monolithic application sandboxes an unsafe library by compiling it into a
-   wasm component and then AOT-compiling the wasm component into native code
-   linked into the monolithic application (e.g., [RLBox]).
-7. A large application practices [Principle of Least Authority] and/or
-   [Modular Programming] by decomposing the application into wasm components,
-   leveraging the lightweight sandboxing model of wasm to avoid the overhead of
-   traditional process-based decomposition.
+1. 本机语言运行时（如 node.js 或 CPython）使用组件作为运行时本机插件的可移植、沙盒替代方案，避免了本机插件的可移植性和安全性问题。
+2. 希望将代码更靠近数据或客户端的无服务器平台使用 wasm 组件代替固定的脚本语言，利用 wasm 强大的沙盒和语言中立性。
+3. 希望以低延迟启动大量新执行上下文的无服务器平台使用 wasm 组件，因为它们的开销低且实例化速度快。
+4. 系统或服务通过嵌入现有组件运行时、在适用的情况下重用现有 WASI 标准支持，仅需少量工程工作即可增加对高效、多语言“脚本”的支持。
+5. 大型应用程序通过将模块化部分作为 wasm 组件进行分发和运行，将应用程序模块化部分的更新与本机安装的基础应用程序的更新分离。
+6. 单片应用程序通过将不安全的库编译为 wasm 组件，然后将 wasm 组件 AOT 编译为链接到单片应用程序的本机代码（例如[RLBox]）来对不安全的库进行沙盒处理。
+7. 大型应用程序通过将应用程序分解为 wasm 组件来[实践最小权限原则(Principle of Least Authority)]和/或 [模块化编程(Modular Programming)]，利用 wasm 的轻量级沙盒模型来避免传统基于流程的分解的开销。
 
-#### Invoking component exports from the host
+#### 从主机调用组件导出
 
-Once a host chooses to embed wasm (for one of the preceding reasons), the first
-design choice is how the host executes the wasm code. The core wasm [start function]
-is sometimes used for this purpose, however the lack of parameters or results
-miss out on several use cases listed below, which suggest the use of exported
-wasm functions with typed signatures instead. However, there are a number of
-use cases that go beyond the ability of core wasm:
+一旦主机选择嵌入 wasm（出于上述原因之一），第一个设计选择就是主机如何执行 wasm 代码。核心 wasm [start function]有时用于此目的，但是缺少参数或结果会错过下面列出的几个用例，这些用例建议改用具有类型签名的导出 wasm 函数。但是，有许多用例超出了核心 wasm 的能力：
 
-1. A JS developer `import`s a component (via [ESM-integration]) and calls the
-   component's exports as JS functions, passing high-level JS values like strings,
-   objects and arrays which are automatically coerced according to the high-level,
-   typed interface of the invoked component.
-2. A generic wasm runtime CLI allows the user to invoke the exports of a
-   component directly from the command-line, automatically parsing argv and env
-   vars according to the high-level, typed interface of the invoked component.
-3. A generic wasm runtime HTTP server maps HTTP endpoints onto the exports of a
-   component, automatically parsing request params, headers and body and
-   generating response headers and body according to the high-level, typed
-   interface of the invoked component.
-4. A host implements a wasm execution platform by invoking wasm component
-   exports in response to domain-specific events (e.g., on new request, on new
-   chunk of data available for processing, on trigger firing) through a fixed
-   interface that is either standardized (e.g., via WASI) or specific to the host.
+1. JS 开发人员import使用组件（通过[ESM集成(ESM-integration)]）并将组件的导出作为 JS 函数调用，传递高级 JS 值（如字符串、对象和数组），这些值会根据被调用组件的高级类型接口自动强制转换。
+2. 通用 wasm 运行时 CLI 允许用户直接从命令行调用组件的导出，根据被调用组件的高级类型接口自动解析 argv 和 env 变量。
+3. 通用 wasm 运行时 HTTP 服务器将 HTTP 端点映射到组件的导出上，自动解析请求参数、标头和正文，并根据调用组件的高级类型接口生成响应标头和正文。
+4. 主机通过标准化（例如，通过 WASI）或特定于主机的固定接口，响应特定于域的事件（例如，新请求、可供处理的新数据块、触发器触发）调用 wasm 组件导出来实现 wasm 执行平台。
 
-The first three use cases demonstrate a more general use case of generically
-reflecting typed component exports in terms of host-native concepts.
+前三个用例展示了从主机原生概念的角度泛型反映类型化组件导出的更通用的用例。
 
-#### Exposing host functionality to components as imports
+#### 将主机功能作为导入暴露给组件
 
-Once wasm has been invoked by the host, the next design choice is how to expose
-the host's native functionality and resources to the wasm code while it executes.
-Imports are the natural choice and already used for this purpose, but there are
-a number of use cases that go beyond what can be expressed with core wasm
-imports:
+一旦 wasm 被主机调用，下一个设计选择就是如何在 wasm 代码执行时向其公开主机的本机功能和资源。导入是自然的选择，并且已经用于此目的，但有许多用例超出了核心 wasm 导入所能表达的范围：
 
-1. A host defines imports in terms of explicit high-level value types (e.g.,
-   numbers, strings, lists, records and variants) that can be automatically
-   bound to the calling component's source-language values.
-2. A host returns non-value, non-copied resources (like files, storage
-   connections and requests/responses) to components via unforgeable handles
-   (analogous to Unix file descriptors).
-3. A host exposes non-blocking and/or streaming I/O to components through
-   language-neutral interfaces that can be bound to different components'
-   source languages' concurrency features (such as promises, futures,
-   async/await and coroutines).
-4. A host passes configuration (e.g., values from config files and secrets) to
-   a component through imports of typed high-level values and handles.
-5. A component declares that a particular import is "optional", allowing that
-   component to execute on hosts with or without the imported functionality.
-6. A developer instantiates a component with native host imports in production
-   and with mock or emulated imports in local development and testing.
+1. 宿主根据显式的高级值类型（例如数字、字符串、列表、记录和变体）定义导入，这些值可以自动绑定到调用组件的源语言值。
+2. 主机通过不可伪造的句柄（类似于 Unix 文件描述符）向组件返回无值、未复制的资源（如文件、存储连接和请求/响应）。
+3. 主机通过语言中立的接口向组件公开非阻塞和/或流式 I/O，这些接口可以绑定到不同组件源语言的并发特性（例如 promises、futures、async/await 和协同程序）。
+4. 主机通过导入类型化的高级值和句柄将配置（例如来自配置文件和机密的值）传递给组件。
+5. 组件声明特定的导入是“可选的”，从而允许该组件在具有或不具有导入功能的主机上执行。
+6. 开发人员在生产中使用本机主机导入来实例化组件，并在本地开发和测试中使用模拟或仿真导入来实例化组件。
 
-#### Host-determined component lifecycles and associativity
+#### 宿主决定的组件生命周期和关联性
 
-Another design choice when a host embeds wasm is when to create new instances,
-when to route events to existing instances, when existing instances are
-destroyed, and how, if there are multiple live instances, do they interact with
-each other, if at all. Some use cases include:
+当主机嵌入 wasm 时，另一个设计选择是何时创建新实例、何时将事件路由到现有实例、何时销毁现有实例，以及如果有多个活动实例，它们如何相互交互（如果有的话）。一些用例包括：
 
-1. A host creates many ephemeral, concurrent component instances, each of which
-   is tied to a particular host-domain-specific entity's lifecycle (e.g. a
-   request-response pair, connection, session, job, client or tenant), with a
-   component instance being destroyed when the associated entity's
-   domain-specified lifecycle completes.
-2. A host delivers fine-grained events, for which component instantiation would
-   have too much overhead if performed per-event or for which retained mutable
-   state is desired, by making multiple export calls on the same component
-   instance over time. Export calls can be asynchronous, allowing multiple
-   fine-grained events to be processed concurrently. For example, multiple
-   packets could be delivered as multiple export calls to the component instance
-   for a connection.
-3. A host represents associations between longer- and shorter-lived
-   host-domain-specific entities (e.g., a "connection's session" or a "session's
-   user") by having the shorter-lived component instances (e.g., "connections")
-   import the exports of the longer-lived component instances (e.g., "sessions").
+1. 主机创建许多短暂的、并发的组件实例，每个实例都与特定主机域特定实体的生命周期（例如请求-响应对、连接、会话、作业、客户端或租户）相关联，当关联实体的域指定生命周期完成时，组件实例将被销毁。
+2. 主机通过随时间对同一组件实例进行多次导出调用来传递细粒度事件，对于这些事件，如果针对每个事件执行组件实例化，则会产生过多的开销，或者需要保留可变状态。导出调用可以是异步的，从而允许同时处理多个细粒度事件。例如，可以将多个数据包作为多个导出调用传递到组件实例以进行连接。
+3. 主机通过让较短寿命的组件实例（例如“连接”）导入较长寿命的组件实例（例如“会话”）的导出来表示较长寿命和较短寿命的主机域特定实体（例如“连接的会话”或“会话的用户”）之间的关联。
 
-### Component composition
+### 组件合成
 
-The other way components are to be used (other than via direct execution by the
-host) is by other components, through component composition.
+组件的另一种使用方式（除了通过主机直接执行外）是通过其他组件，通过组件组合。
 
-#### Value propositions to developers for composing components
+#### 为开发人员提供编写组件的价值主张
 
-Enumerating some of the reasons why we might want to compose components in the
-first place (instead of simply using the module/package mechanisms built into
-the programming language):
+列举一些我们首先想要组合组件的原因（而不是简单地使用编程语言内置的模块/包机制）：
 
-1. A component developer reuses code already written in another language
-   instead of having to reimplement the functionality from scratch.
-2. A component developer writing code in a high-level scripting language (e.g.,
-   JS or Python) reuses high-performance code written in a lower-level language
-   (e.g., C++ or Rust).
-3. A component developer mitigates the impact of supply-chain attacks by
-   putting their dependencies into several components and controlling the
-   capabilities delegated to each, taking advantage of the strong sandboxing model
-   of components.
-4. A component runtime implements built-in host functionality as wasm
-   components to reduce the [Trusted Computing Base].
-5. An application developer applies the Unix philosophy without incurring the
-   full cost and OS-dependency of splitting their program into multiple processes
-   by instead having each component do one thing well and using the component
-   model to compose their program as a hierarchy of components.
-6. An application developer composes multiple independently-developed components
-   that import and export the same interface (e.g., an HTTP request-handling
-   interface). By linking these components from exports to imports, the developer
-   can create recursive, branching DAGs of linked components, achieving
-   configurations not possible with classic Unix-style pipelines.
+1. 组件开发人员可以重复使用另一种语言编写的代码，而不必从头开始重新实现功能。
+2. 使用高级脚本语言（例如 JS 或 Python）编写代码的组件开发人员可以重用使用低级语言（例如 C++ 或 Rust）编写的高性能代码。
+3. 组件开发人员将其依赖项放入多个组件并控制委托给每个组件的功能，利用组件强大的沙盒模型，减轻供应链攻击的影响。
+4. 组件运行时将内置主机功能实现为 wasm 组件，以减少[可信计算基(Trusted Computing Base)]。
+5. 应用程序开发人员应用 Unix 哲学，无需承担将其程序拆分为多个进程的全部成本和操作系统依赖性，而是让每个组件做好一件事，并使用组件模型将其程序组成组件层次结构。
+6. 应用程序开发人员编写多个独立开发的组件，这些组件导入和导出相同的接口（例如，HTTP 请求处理接口）。通过将这些组件从导出链接到导入，开发人员可以创建链接组件的递归、分支 DAG，实现经典 Unix 风格管道无法实现的配置。
 
-In all the above use cases, the developer has an additional goal of keeping the
-component reuse as a private, fully-encapsulated implementation detail that
-their client doesn't need to be aware of (either directly in code, or
-indirectly in the developer workflow).
+在所有上述用例中，开发人员都有一个额外的目标，那就是将组件重用作为私有的、完全封装的实现细节，其客户端不需要知道这些细节（无论是直接在代码中，还是间接在开发人员工作流程中）。
 
-#### Composition primitives
+#### 合成基元
 
-Core wasm already provides the fundamental composition primitives of: imports,
-exports and functions, allowing a module to export a function that is imported
-by another module. Building from this starting point, there are a number of
-use cases that require additional features:
+核心 wasm 已经提供了基本的组合原语：导入、导出和函数，允许一个模块导出另一个模块导入的函数。从这个起点开始，有许多用例需要额外的功能：
 
-1. Developers importing or exporting functions use high-level value types in
-   their function signatures that include strings, lists, records, variants and
-   arbitrarily-nested combinations of these. Both developers (the caller and
-   callee) get to use the idiomatic values of their respective languages.
-   Values are passed by copy so that there is no shared mutation, ownership or
-   management of these values before or after the call that either developer
-   needs to worry about.
-2. Developers importing or exporting functions use opaque typed handles in
-   their function signatures to pass resources that cannot or should not be copied
-   at the callsite. Both developers (the caller and callee) use their respective
-   languages' abstract data type support for interacting with resources. Handles
-   can encapsulate `i32` pointers to linear memory allocations that need to be
-   safely freed when the last handle goes away.
-3. Developers import or export functions with signatures containing
-   concurrency-oriented types (e.g., future and stream) to address
-   concurrency use cases like non-blocking I/O, early return and streaming. Both
-   developers (the caller and callee) are able to use their respective languages'
-   native concurrency support, if it exists, using the concurrency-oriented types
-   to establish a deterministic communication protocol that defines how the
-   cross-language composition behaves.
-4. A component developer makes a minor [semver] update which changes the
-   component's type in a logically backwards-compatible manner (e.g., adding a new
-   case to a variant parameter type). The component model ensures that the new
-   component stays valid (at link-time and run-time) for use by existing clients
-   compiled against the older signature.
-5. A component developer uses their language, toolchain and memory
-   representation of choice (including, in the future, [GC memory]), with these
-   implementation choices fully encapsulated by the component and thus hidden from
-   the client. The component developer can switch languages, toolchains or memory
-   representations in the future without breaking existing clients.
+1. 导入或导出函数的开发人员在其函数签名中使用高级值类型，包括字符串、列表、记录、变体以及这些的任意嵌套组合。两位开发人员（调用者和被调用者）都可以使用各自语言的惯用值。值通过复制传递，因此在调用之前或之后，两位开发人员都无需担心这些值的共享变异、所有权或管理。
+2. 导入或导出函数的开发人员在其函数签名中使用不透明类型的句柄来传递无法或不应在调用点复制的资源。两位开发人员（调用者和被调用者）都使用各自语言的抽象数据类型支持来与资源交互。句柄可以封装`i32`指向线性内存分配的指针，这些指针需要在最后一个句柄消失时安全释放。
+3. 开发人员导入或导出带有包含面向并发类型的签名的函数（例如 Future 和 Stream），以解决非阻塞 I/O、早期返回和流式传输等并发用例。如果存在，两位开发人员（调用者和被调用者）都可以使用各自语言的本机并发支持（如果存在），使用面向并发的类型建立确定性通信协议，该协议定义跨语言组合的行为方式。
+4. 组件开发人员进行一次次要的[semver]更新，以逻辑上向后兼容的方式更改组件的类型（例如，向变体参数类型添加新案例）。组件模型确保新组件保持有效（在链接时和运行时），以供针对旧签名编译的现有客户端使用。
+5. 组件开发人员使用他们选择的语言、工具链和内存表示（包括将来的[GC内存(GC memory)]），这些实现选择完全由组件封装，因此对客户端隐藏。组件开发人员将来可以切换语言、工具链或内存表示，而不会破坏现有客户端。
 
-The above use cases roughly correspond to the use cases of an [RPC] framework,
-which have similar goals of crossing language boundaries. The major difference
-is the dropping of the distributed computing goals (see [non-goals](Goals.md#non-goals))
-and the additional performance goals mentioned [below](#performance).
+上述用例大致对应于[RPC]框架的用例，它们具有类似的跨越语言界限的目标。主要区别在于放弃了分布式计算目标（参见[非目标](Goals.md#非目标)）和[下方](#性能)提到的额外性能目标。
 
-#### Component dependencies
+#### 组件依赖关系
 
-When a client component imports another component as a dependency, there are a
-number of use cases for how the dependency's instance is configured and shared
-or not shared with other clients of the same dependency. These use cases
-require a greater degree of programmer control than allowed by most languages'
-native module systems and most native code linking systems while not requiring
-fully dynamic linking (e.g., as provided by the [JS API]).
+当客户端组件将另一个组件作为依赖项导入时，有许多用例可以说明如何配置依赖项的实例以及如何与同一依赖项的其他客户端共享或不共享。这些用例需要程序员进行更大程度的控制，而大多数语言的原生模块系统和大多数原生代码链接系统都无法做到这一点，但不需要完全动态链接（例如，[JS API]提供的链接）。
 
-1. A component developer exposes their component's configuration to clients as
-   imports that are supplied when the component is instantiated by the client.
-2. A component developer configures a dependency independently of any other
-   clients of the same dependency by creating a fresh private instance of the
-   dependency and supplying the desired configuration values at instantiation.
-3. A component developer imports a dependency as an already-created instance,
-   giving the component's clients the responsibility to configure the
-   dependency and the freedom to share it with others.
-4. A component developer creates a fresh private instance of a dependency to
-   isolate the dependency's mutable instance state in order to minimize the
-   damage that can be caused in the event of a supply chain attack or
-   exploitable bug in the dependency.
-5. A component developer imports an already-created instance of a dependency,
-   allowing the dependency to use mutable instance state to deduplicate data or
-   cache common results, optimizing overall app performance.
-6. A component developer imports a WASI interface and does not explicitly pass
-   the WASI interface to a privately-created dependency. The developer knows,
-   without manually auditing the code of the dependency, that the dependency
-   cannot access the WASI interface.
-7. A component developer creates a private dependency instance, supplying it a
-   virtualized implementation of a WASI interface. The developer knows, without
-   manually auditing the code of the dependency, that the dependency exclusively
-   uses the virtualized implementation.
-8. A component developer creates a fresh private instance of a dependency,
-   supplying the component's own functions as imports to the dependency. The
-   component does this to parameterize the dependency's behavior with the
-   component's own logic or implementation choices (achieving the goals usually
-   accomplished using callback registration or [dependency injection]).
+1. 组件开发人员将其组件的配置作为导入公开给客户端，这些导入是在客户端实例化组件时提供的。
+2. 组件开发人员通过创建依赖项的全新私有实例并在实例化时提供所需的配置值，独立于同一依赖项的任何其他客户端来配置依赖项。
+3. 组件开发人员将依赖项作为已创建的实例导入，从而让组件的客户端负责配置依赖项并自由地与他人共享。
+4. 组件开发人员创建依赖项的全新私有实例，以隔离依赖项的可变实例状态，从而最大限度地减少在发生供应链攻击或依赖项中可利用的错误时可能造成的损害。
+5. 组件开发人员导入已创建的依赖项实例，允许依赖项使用可变实例状态来删除重复数据或缓存常见结果，从而优化整体应用程序性能。
+6. 组件开发人员导入 WASI 接口，并且不会显式将 WASI 接口传递给私有创建的依赖项。开发人员无需手动审核依赖项的代码，就知道依赖项无法访问 WASI 接口。
+7. 组件开发人员创建一个私有依赖项实例，并为其提供 WASI 接口的虚拟化实现。开发人员无需手动审核依赖项的代码，就知道该依赖项只使用虚拟化实现。
+8. 组件开发人员创建一个新的依赖项私有实例，将组件自己的函数作为依赖项的导入提供。组件这样做是为了使用组件自己的逻辑或实现选择来参数化依赖项的行为（实现通常使用回调注册或[依赖项注入(dependency injection)]实现的目标）。
 
-### Performance
+### 性能
 
-In pursuit of the above functional use cases, it's important that the component
-model not sacrifice the performance properties that motivate the use of wasm in
-the first place. Thus, the new features mentioned above should be consistent
-with the predictable performance model established by core wasm by supporting
-the following use cases:
+为了实现上述功能用例，重要的是组件模型不能牺牲最初使用 wasm 的性能属性。因此，上述新功能应通过支持以下用例与核心 wasm 建立的可预测性能模型保持一致：
 
-1. A component runtime implements cross-component calls with efficient, direct
-   control flow transfer without thread context switching or synchronization.
-2. A component runtime implements component instances without needing to give
-   each instance its own event loop, green thread or message queue.
-3. A component runtime or optimizing AOT compiler compiles all import and
-   export names into indices or more direct forms of reference (up to and
-   including direct inlining of cross-component definitions into uses).
-4. A component runtime implements value passing between component instances
-   without ever creating an intermediate O(n) copy of aggregate data types,
-   outside of either component instance's explicitly-allocated linear memory.
-5. A component runtime shares the compiled machine code of a component across
-   many instances of that component.
-6. A component is composed of several core wasm modules that operate on a
-   single shared linear memory, some of which contain language runtime code
-   that is shared by all components produced from the same language toolchain.
-   A component runtime shares the compiled machine code of the shared language
-   runtime module.
-7. A component runtime implements the component model and achieves expected
-   performance without using any runtime code generation or Just-in-Time
-   compilation.
+1. 组件运行时实现跨组件调用，具有高效、直接的控制流传输，无需线程上下文切换或同步。
+2. 组件运行时实现组件实例，而不需要为每个实例提供自己的事件循环、绿色线程或消息队列。
+3. 组件运行时或优化 AOT 编译器将所有导入和导出名称编译为索引或更直接的引用形式（包括将跨组件定义直接内联到用途中）。
+4. 组件运行时实现组件实例之间的值传递，而无需在任一组件实例的显式分配的线性内存之外创建聚合数据类型的中间 O(n) 副本。
+5. 组件运行时在该组件的多个实例之间共享该组件的已编译机器代码。
+6. 组件由多个核心 wasm 模块组成，这些模块在单个共享线性内存上运行，其中一些模块包含语言运行时代码，这些代码由同一语言工具链生成的所有组件共享。组件运行时共享共享语言运行时模块的编译机器代码。
+7. 组件运行时实现组件模型并达到预期性能，而无需使用任何运行时代码生成或即时编译。
 
-## Post-MVP
+## MVP后续
 
-The following are a list of use cases that make sense to support eventually,
-but not necessarily in the initial release.
+以下是最终需要支持但不一定在初始版本中支持的用例列表。
 
-### Runtime dynamic linking
+### 运行时动态链接（Runtime dynamic linking）
 
-* A component lazily creates an instance of its dependency on the first call
-  to its exports.
-* A component dynamically instantiates, calls, then destroys its dependency,
-  avoiding persistent resource usage by the dependency if the dependency is used
-  infrequently and/or preventing the dependency from accumulating state across
-  calls which could create supply chain attack risk.
-* A component creates a fresh internal instance every time one of its exports
-  is called, avoiding any residual state between export calls and aligning with
-  the usual assumptions of C programs with a `main()`.
+* 组件在第一次调用其导出时会延迟创建其依赖项的实例。
+* 组件动态地实例化、调用然后销毁其依赖项，如果依赖项不经常使用则避免依赖项持续使用资源和/或防止依赖项在调用之间积累状态，这可能会产生供应链攻击风险。
+* 每次调用组件的某个导出时，组件都会创建一个新的内部实例，从而避免在导出调用之间出现任何残留状态，并符合带有 的 C 程序的通常假设`main()`。
 
-### Parallelism
+### 并行性（Parallelism）
 
-* A component creates a new (green) thread to execute an export call to a
-  dependency, achieving task parallelism while avoiding low-level data races due
-  to the absence of shared mutable state between the component and the
-  dependency.
-* Two component instances connected via stream execute in separate (green)
-  threads, achieving pipeline parallelism while preserving determinism due to the
-  absence of shared mutable state.
+* 组件创建一个新的（绿色）线程来执行对依赖项的导出调用，实现任务并行，同时避免由于组件和依赖项之间缺乏共享可变状态而导致的低级数据竞争。
+* 两个通过流连接的组件实例在单独的（绿色）线程中执行，实现管道并行性，同时由于不存在共享可变状态而保持确定性。
 
-### Copy Minimization
+### 复制最小化（Copy Minimization）
 
-* A component produces or consumes the high-level abstract value types using
-  its own arbitrary linear memory representation or procedural interface (like
-  iterator or generator) without having to make an intermediate copy in linear
-  memory or copy unwanted elements.
-* A component is given a "blob" resource representing an immutable array of
-  bytes living outside any linear memory that can be semantically copied into
-  linear memory in a way that, if supported by the host, can be implemented via
-  copy-on-write memory-mapping.
-* A component creates a stream directly from a data segment, avoiding the cost
-  of first copying the data segment into linear memory and then streaming from
-  linear memory.
+* 组件使用其自己的任意线性内存表示或过程接口（如迭代器或生成器）生成或使用高级抽象值类型，而无需在线性内存中进行中间复制或复制不需要的元素。
+* 每个组件被赋予一个“blob”资源，该资源表示位于任何线性内存之外的不可变字节数组，该数组可以在语义上复制到线性内存中，如果主机支持，则可以通过写时复制内存映射来实现。
+* 组件直接从数据段创建流，避免了先将数据段复制到线性内存中，然后从线性内存流式传输的成本。
 
-### Component-level multi-threading
+### 组件级多线程（Component-level multi-threading）
 
-In the absence of these features, a component can assume its exports are
-called in a single-threaded manner (just like core wasm). If and when core wasm
-gets a primitive [`fork`] instruction, a component may, as a private
-implementation detail, have its internal `shared` memory accessed by multiple
-component-internal threads. However, these `fork`ed threads would not be able
-to call imports, which could break other components' single-threaded assumptions.
+在没有这些功能的情况下，组件可以假设其导出以单线程方式调用（就像核心 wasm 一样）。如果核心 wasm 收到原始[`fork`]指令，则组件可以作为私有实现细节，让`shared`多个组件内部线程访问其内部内存。但是，这些被`fork`的线程将无法调用导入，这可能会破坏其他组件的单线程假设。
 
-* A component explicitly annotates a function export with [`shared`],
-  opting in to it being called simultaneously from multiple threads.
-* A component explicitly annotates a function import with `shared`, requiring
-  the imported function to have been explicitly `shared` and thus callable from
-  any `fork`ed thread.
+组件用 明确注释函数导出[`shared`]，选择从多个线程同时调用该函数。
+组件用 明确注释函数导入[`shared`]，要求导入的函数必须明确[`shared`]且可从任何被`fork`的线程调用。
 
 [RLBox]: https://rlbox.dev/
-[Principle of Least Authority]: https://en.wikipedia.org/wiki/Principle_of_least_privilege
-[Modular Programming]: https://en.wikipedia.org/wiki/Modular_programming
+[实践最小权限原则(Principle of Least Authority)]: https://en.wikipedia.org/wiki/Principle_of_least_privilege
+[模块化编程(Modular Programming)]: https://en.wikipedia.org/wiki/Modular_programming
 [start function]: https://webassembly.github.io/spec/core/intro/overview.html#semantic-phases
-[ESM-integration]: https://github.com/WebAssembly/esm-integration/tree/main/proposals/esm-integration
-[Trusted Computing Base]: https://en.wikipedia.org/wiki/Trusted_computing_base
+[ESM集成(ESM-integration)]: https://github.com/WebAssembly/esm-integration/tree/main/proposals/esm-integration
+[可信计算基(Trusted Computing Base)]: https://en.wikipedia.org/wiki/Trusted_computing_base
 [semver]: https://en.wikipedia.org/wiki/Software_versioning
 [RPC]: https://en.wikipedia.org/wiki/Remote_procedure_call
-[GC memory]: https://github.com/WebAssembly/gc/blob/master/proposals/gc/Overview.md
+[GC内存(GC memory)]: https://github.com/WebAssembly/gc/blob/master/proposals/gc/Overview.md
 [JS API]: https://webassembly.github.io/spec/js-api/index.html
-[dependency injection]: https://en.wikipedia.org/wiki/Dependency_injection
+[依赖项注入(dependency injection)]: https://en.wikipedia.org/wiki/Dependency_injection
 [`fork`]: https://dl.acm.org/doi/pdf/10.1145/3360559
 [`shared`]: https://dl.acm.org/doi/pdf/10.1145/3360559
