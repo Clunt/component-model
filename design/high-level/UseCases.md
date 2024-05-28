@@ -1,20 +1,12 @@
-# Component Model Use Cases
+# 组件模型的使用案例
 
-## Initial (MVP)
+## 初始（MVP）
 
-This section describes a collection of use cases that characterize active and
-developing embeddings of wasm and the limitations of the core wasm
-specification that they run into outside of a browser context. The use cases
-have a high degree of overlap in their required features and help to define the
-scope of an "MVP" (Minimum Viable Product) for the Component Model.
+本节描述了一些使用案例，体现了wasm的活跃和正在开发的嵌入，以及它们在浏览器环境之外遇到的核心wasm规范的限制。这些使用案例在其所需功能上有很高的重叠性，并有助于定义组件模型的“MVP”（最小可行产品）的范围。
 
-### Hosts embedding components
+### 主机嵌入组件（Hosts embedding components）
 
-One way that components are to be used is by being directly instantiated and
-executed by a host (an application, system or service embedding a wasm
-runtime), using the component model to provide a common format and toolchain so
-that each distinct host doesn't have to define its own custom conventions and
-sets of tools for solving the same problems.
+组件的一种使用方式是被主机（嵌入 wasm 运行时的应用程序、系统或服务）直接实例化和执行，使用组件模型提供通用格式和工具链，这样每个不同的主机不必定义自己的自定义约定和工具集来解决相同的问题。
 
 #### Value propositions to hosts for embedding components
 
