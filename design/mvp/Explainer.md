@@ -2,13 +2,13 @@
 
 解释器本文介绍了组件的汇编级(assembly-level)定义，以及原生JavaScript运行时组件嵌入提案。如需面向用户的详细说明，请查看[**组件模型文档**][Component Model Documentation]。
 
-* [Gated features](#gated-features)
+* [特性封闭（Gated features）](#特性封闭（gated-features）)
 * [语法](#语法)
-  * [组件定义](#组件定义)
-    * [索引空间](#索引空间)
-  * [Instance definitions](#instance-definitions)
-  * [Alias definitions](#alias-definitions)
-  * [Type definitions](#type-definitions)
+  * [组件定义（Component Definitions）](#组件定义（component-definitions）)
+    * [索引空间（Inedx Spaces）](#索引空间（inedx-spaces）)
+  * [实例定义（Instance definitions）](#实例定义（instance-definitions）)
+  * [别名定义（Alias definitions）](#alias-definitions)
+  * [类型定义（Type definitions）](#type-definitions)
     * [Fundamental value types](#fundamental-value-types)
       * [Numeric types](#numeric-types)
       * [Container types](#container-types)
@@ -29,7 +29,7 @@
 * [Examples](#examples)
 * [TODO](#TODO)
 
-## Gated Features
+## 特性封闭（Gated features）
 
 默认情况下，本解释器中描述的功能（以及支持的[Binary.md](Binary.md)、[WIT.md](WIT.md)和[CanonicalABI.md](CanonicalABI.md)）已实现并包含在[WASI Preview 2]稳定性里程碑中。不属于 Preview 2 的功能由以下列出的表情符号之一划定；这些表情符号将在实现、被视为稳定并包含在未来的里程碑中后被删除：
 * 🪙: 值导入/导出(imports/exports)和组件级启动函数(component-level start function)
@@ -48,7 +48,7 @@
 
 [EBNF语法]: https://zh.wikipedia.org/wiki/%E6%89%A9%E5%B1%95%E5%B7%B4%E7%A7%91%E6%96%AF%E8%8C%83%E5%BC%8F
 
-### 组件定义
+### 组件定义（Component Definitions）
 
 顶层`component`是各种类型定义的序列：
 ```ebnf
@@ -137,16 +137,11 @@ WebAssembly 1.0也存在5个核心索引空间：
 ```
 
 
-### Instance Definitions
+### 实例定义（Instance definitions）
 
-Whereas modules and components represent immutable *code*, instances associate
-code with potentially-mutable *state* (e.g., linear memory) and thus are
-necessary to create before being able to *run* the code. Instance definitions
-create module or component instances by selecting a module or component and
-then supplying a set of named *arguments* which satisfy all the named *imports*
-of the selected module or component.
+鉴于模块和组件代表不可变*代码*，实例(instance)将代码与潜在可变的*状态*(potentially-mutable state 例如 线性内存 linear memory）相关联，因此在*运行*代码前必须创建实例。实例定义通过选择一个模块或组件，并提供一组命名的*参数(arguments)*来满足所选模块或组件的所有命名*导入(imports)*，从而创建模块或组件实例。
 
-The syntax for defining a core module instance is:
+定义核心模块实例的语法为：
 ```ebnf
 core:instance       ::= (instance <id>? <core:instancexpr>)
 core:instanceexpr   ::= (instantiate <core:moduleidx> <core:instantiatearg>*)
