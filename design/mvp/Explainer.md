@@ -2,11 +2,11 @@
 
 解释器本文介绍了组件的汇编级(assembly-level)定义，以及原生JavaScript运行时组件嵌入提案。如需面向用户的详细说明，请查看[**组件模型文档**][Component Model Documentation]。
 
-* [特性封闭（Gated features）](#特性封闭（gated-features）)
+* [特性封闭（Gated features）](#特性封闭gated-features)
 * [语法](#语法)
-  * [组件定义（Component Definitions）](#组件定义（component-definitions）)
-    * [索引空间（Inedx Spaces）](#索引空间（inedx-spaces）)
-  * [实例定义（Instance definitions）](#实例定义（instance-definitions）)
+  * [组件定义（Component Definitions）](#组件定义component-definitions)
+    * [索引空间（Inedx Spaces）](#索引空间inedx-spaces)
+  * [实例定义（Instance definitions）](#实例定义instance-definitions)
   * [别名定义（Alias definitions）](#alias-definitions)
   * [类型定义（Type definitions）](#type-definitions)
     * [Fundamental value types](#fundamental-value-types)
