@@ -141,7 +141,7 @@ WebAssembly 1.0也存在5个核心索引空间：
 
 ### 实例定义（Instance definitions）
 
-鉴于模块和组件代表不可变*代码*，实例(instance)将代码与潜在可变的*状态*(potentially-mutable state 例如 线性内存 linear memory）相关联，因此在*运行*代码前必须创建实例。实例定义通过选择一个模块或组件，并提供一组命名的*参数(arguments)*来满足所选模块或组件的所有命名*导入(imports)*，从而创建模块或组件实例。
+鉴于模块和组件代表不可变*代码*，实例(instance)将代码与潜在可变的*状态*（potentially-mutable state，例如线性内存）相关联，因此在*运行*代码前必须创建实例。实例定义通过选择一个模块或组件，并提供一组命名的*参数(arguments)*来满足所选模块或组件的所有命名*导入(imports)*，从而创建模块或组件实例。
 
 定义核心模块实例的语法为：
 ```ebnf
@@ -160,8 +160,7 @@ core:sort           ::= func
                       | instance
 core:inlineexport   ::= (export <core:name> <core:sortidx>)
 ```
-When instantiating a module via `instantiate`, the two-level imports of the
-core modules are resolved as follows:
+当通过`instantiate`实例化模块时，核心模块的两级导入按如下方式解析：
 1. The first `core:name` of the import is looked up in the named list of
    `core:instantiatearg` to select a core module instance. (In the future,
    other `core:sort`s could be allowed if core wasm adds single-level
