@@ -1,4 +1,4 @@
-# Component Model Explainer
+# 组件模型解释器
 
 This explainer walks through the assembly-level definition of a
 [component](../high-level) and the proposed embedding of components into native
@@ -6,9 +6,9 @@ JavaScript runtimes. For a more user-focused explanation, take a look at the
 **[Component Model Documentation]**.
 
 * [Gated features](#gated-features)
-* [Grammar](#grammar)
-  * [Component definitions](#component-definitions)
-    * [Index spaces](#index-spaces)
+* [语法](#语法)
+  * [组件定义](#组件定义)
+    * [索引空间](#索引空间)
   * [Instance definitions](#instance-definitions)
   * [Alias definitions](#alias-definitions)
   * [Type definitions](#type-definitions)
@@ -34,46 +34,26 @@ JavaScript runtimes. For a more user-focused explanation, take a look at the
 
 ## Gated Features
 
-By default, the features described in this explainer (as well as the supporting
-[Binary.md](Binary.md), [WIT.md](WIT.md) and [CanonicalABI.md](CanonicalABI.md))
-have been implemented and are included in the [WASI Preview 2] stability
-milestone. Features that are not part of Preview 2 are demarcated by one of the
-emoji symbols listed below; these emojis will be removed once they are
-implemented, considered stable and included in a future milestone:
-* 🪙: value imports/exports and component-level start function
-* 🪺: nested namespaces and packages in import/export names
-* 🧵: threading built-ins
+默认情况下，本解释器中描述的功能（以及支持的[Binary.md](Binary.md)、[WIT.md](WIT.md)和[CanonicalABI.md](CanonicalABI.md)）已实现并包含在[WASI Preview 2]稳定性里程碑中。不属于 Preview 2 的功能由以下列出的表情符号之一划定；这些表情符号将在实现、被视为稳定并包含在未来的里程碑中后被删除：
+* 🪙: 值导入/导出(imports/exports)和组件级启动函数(component-level start function)
+* 🪺: 导入/导出名称中的嵌套命名空间和包(nested namespaces and packages)
+* 🧵: 线程内置
 
-(Based on the previous [scoping and layering] proposal to the WebAssembly CG,
-this repo merges and supersedes the [module-linking] and [interface-types]
-proposals, pushing some of their original features into the post-MVP [future
-feature](FutureFeatures.md) backlog.)
+（基于之前向 WebAssembly CG 提出的范围和[分层提案][scoping and layering]，此仓库合入并取代了[模块链接(module-linking)][module-linking]和[接口类型(interface-types)][interface-types]提案，将它们的一些原始功能推送到MVP后续代办的[未来功能](FutureFeatures.md)中。
 
+## 语法
 
-## Grammar
+本节使用[EBNF语法]定义组件，该语法解析介于纯粹抽象语法树（如WebAssembly核心规范的[结构部分][Structure Section]）和完整文本格式（如WebAssembly核心规范的[文本格式部分][Text Format Section]之间的内容。目标是平衡完整性和简洁性，只需提供足够的细节来编写示例并以[二进制格式][Binary Format Section]部分的样式定义[二进制格式(binary format)](Binary.md) ，详细严谨的语法将推迟到[正式规范](../../spec/)。
 
-This section defines components using an EBNF grammar that parses something in
-between a pure Abstract Syntax Tree (like the Core WebAssembly spec's
-[Structure Section]) and a complete text format (like the Core WebAssembly
-spec's [Text Format Section]). The goal is to balance completeness with
-succinctness, with just enough detail to write examples and define a [binary
-format](Binary.md) in the style of the [Binary Format Section], deferring full
-precision to the [formal specification](../../spec/).
+语法模糊解释的主要方式是关于定义的使用，其中引用`X`定义的索引（写作`<Xidx>`）在实际文本格式中应明确允许标识符 (`<id>`)，在解析时检查标识符是否解析为`X`定义，然后将解析后的索引嵌入到AST中。
 
-The main way the grammar hand-waves is regarding definition uses, where indices
-referring to `X` definitions (written `<Xidx>`) should, in the real text
-format, explicitly allow identifiers (`<id>`), checking at parse time that the
-identifier resolves to an `X` definition and then embedding the resolved index
-into the AST.
+此外，假定了下面未明确定义的WebAssembly核心文本格式定义的标准[缩写][abbreviations]（例如，内联导出定义*inline export definitions*）。
 
-Additionally, standard [abbreviations] defined by the Core WebAssembly text
-format (e.g., inline export definitions) are assumed but not explicitly defined
-below.
+[EBNF语法]: https://zh.wikipedia.org/wiki/%E6%89%A9%E5%B1%95%E5%B7%B4%E7%A7%91%E6%96%AF%E8%8C%83%E5%BC%8F
 
+### 组件定义
 
-### Component Definitions
-
-At the top-level, a `component` is a sequence of definitions of various kinds:
+顶层`component`是各种类型定义的序列：
 ```ebnf
 component  ::= (component <id>? <definition>*)
 definition ::= core-prefix(<core:module>)
@@ -88,38 +68,15 @@ definition ::= core-prefix(<core:module>)
              | <import>
              | <export>
 
-where core-prefix(X) parses '(' 'core' Y ')' when X parses '(' Y ')'
+其中，当 X 解析为 '(' Y ')' 时，core-prefix(X) 解析为 '(' 'core' Y ')'
 ```
-Components are like Core WebAssembly modules in that their contained
-definitions are acyclic: definitions can only refer to preceding definitions
-(in the AST, text format and binary format). However, unlike modules,
-components can arbitrarily interleave different kinds of definitions.
+组件类似于WebAssembly核心模块，其包含的定义是无环的：定义只能引用前面的定义（在AST、文本格式和二进制格式中）。但与模块不同的是，组件可以任意交错不同类型的定义。
 
-The `core-prefix` meta-function transforms a grammatical rule for parsing a
-Core WebAssembly definition into a grammatical rule for parsing the same
-definition, but with a `core` token added right after the leftmost paren.
-For example, `core:module` accepts `(module (func))` so
-`core-prefix(<core:module>)` accepts `(core module (func))`. Note that the
-inner `func` doesn't need a `core` prefix; the `core` token is used to mark the
-*transition* from parsing component definitions into core definitions.
+元函数(meta-function)`core-prefix`是WebAssembly核心定义的语法规则解析的同一转换，但会在最左侧`(`后添加`core`标志。例如，`core:module`认作`(module (func))`，因此`core-prefix(<core:module>)`认作`(core module (func))`。请注意，内部的`func`不需要`core`前缀；`core`标志用于标记从解析组件定义到核心定义的*转换*。
 
-The [`core:module`] production is unmodified by the Component Model and thus
-components embed Core WebAssembly (text and binary format) modules as currently
-standardized, allowing reuse of an unmodified Core WebAssembly implementation.
-The next production, `core:instance`, is not currently included in Core
-WebAssembly, but would be if Core WebAssembly adopted the [module-linking]
-proposal. This new core definition is introduced below, alongside its
-component-level counterpart. Finally, the existing [`core:type`] production is
-extended below to add core module types as proposed for module-linking. Thus,
-the overall idea is to represent core definitions (in the AST, binary and text
-format) as-if they had already been added to Core WebAssembly so that, if they
-eventually are, the implementation of decoding and validation can be shared in
-a layered fashion.
+组件模型未修改[`core:module`]制品，因此组件嵌入了当前标准的WebAssembly核心（文本和二进制格式）模块，允许复用未经修改的WebAssembly核心实现。目前WebAssembly核心未包含`core:instance`制品，但当WebAssembly核心采纳[模块连接(module-linking）][module-linking]提案后则会涵盖。下面将介绍新的核心定义及对应的组件级部分。最后，现有的[`core:type`]制品按模块连接提案扩展增加核心模块类型。因此，总体思路是将核心定义（在AST、二进制和文本格式中）作为已添加至WebAssembly核心中，因此最终可以分层共享解码和验证的实现。
 
-The next kind of definition is, recursively, a component itself. Thus,
-components form trees with all other kinds of definitions only appearing at the
-leaves. For example, with what's defined so far, we can write the following
-component:
+接下来的定义类型是递归地定义组件自身，因此，形成了所有其他类型定义只出现在叶子节点上的组件树。例如，基于目前定义的内容，我们可以编写如下组件：
 ```wasm
 (component
   (component
@@ -135,47 +92,32 @@ component:
   (component)
 )
 ```
-This top-level component roots a tree with 4 modules and 1 component as
-leaves. However, in the absence of any `instance` definitions (introduced
-next), nothing will be instantiated or executed at runtime; everything here is
-dead code.
 
+上述顶层组件构成了一棵树，叶子节点包含4个模块和1个组件。然而，由于没有任何`instance`定义（后续介绍），运行时不会实例化或执行任何内容；它们均是无用代码(dead code)。
 
-#### Index Spaces
+#### 索引空间（Inedx Spaces）
 
-[Like Core WebAssembly][Core Indices], the Component Model places each
-`definition` into one of a fixed set of *index spaces*, allowing the
-definition to be referred to by subsequent definitions (in the text and binary
-format) via a nonnegative integral *index*. When defining, validating and
-executing a component, there are 5 component-level index spaces:
+类似于[WebAssembly核心][Core Indices]，组件模型将每个`definition`放入一组固定的*索引空间*，从而允许后续定义（在文本和二进制格式中）通过非负整数*索引*引用该定义。在定义、验证和执行组件时，有5个组件级索引空间（component-level index spaces）：
 * (component) functions
 * (component) values
 * (component) types
 * component instances
 * components
 
-5 core index spaces that also exist in WebAssembly 1.0:
+WebAssembly 1.0也存在5个核心索引空间：
 * (core) functions
 * (core) tables
 * (core) memories
 * (core) globals
 * (core) types
 
-and 2 additional core index spaces that contain core definition introduced by
-the Component Model that are not in WebAssembly 1.0 (yet: the [module-linking]
-proposal would add them):
+以及2个额外的核心索引空间，其中包含由组件模型引入的核心定义，但WebAssembly 1.0中未定义（然而：[模块链接(module-linking)][module-linking]提案将会添加）：
 * module instances
 * modules
 
-for a total of 12 index spaces that need to be maintained by an implementation
-when, e.g., validating a component. These 12 index spaces correspond 1:1 with
-the terminals of the `sort` production defined below and thus "sort" and
-"index space" can be used interchangeably.
+实现时需维护共12个索引空间，例如验证时组件。此处12个索引空间与下方`sort`制品的terminals 1:1对应，因此 “sort” 和 “索引空间(index space)”可以互换使用。
 
-Also [like Core WebAssembly][Core Identifiers], the Component Model text format
-allows *identifiers* to be used in place of these indices, which are resolved
-when parsing into indices in the AST (upon which validation and execution is
-defined). Thus, the following two components are equivalent:
+类似于[WebAssembly核心][Core Identifiers]，组件模型的文本格式允许使用*标识符(identifiers)*代替索引，这些标识符会被解析为AST的索引（在此基础上定义验证和执行）。因此，下面两个组件等价：
 ```wasm
 (component
   (core module (; empty ;))
