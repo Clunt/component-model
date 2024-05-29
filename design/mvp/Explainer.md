@@ -1,9 +1,6 @@
 # 组件模型解释器
 
-This explainer walks through the assembly-level definition of a
-[component](../high-level) and the proposed embedding of components into native
-JavaScript runtimes. For a more user-focused explanation, take a look at the
-**[Component Model Documentation]**.
+解释器本文介绍了组件的汇编级(assembly-level)定义，以及原生JavaScript运行时组件嵌入提案。如需面向用户的详细说明，请查看[**组件模型文档**][Component Model Documentation]。
 
 * [Gated features](#gated-features)
 * [语法](#语法)
