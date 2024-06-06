@@ -7,8 +7,8 @@
   * [组件定义（Component Definitions）](#组件定义component-definitions)
     * [索引空间（Inedx Spaces）](#索引空间inedx-spaces)
   * [实例定义（Instance definitions）](#实例定义instance-definitions)
-  * [别名定义（Alias definitions）](#alias-definitions)
-  * [类型定义（Type definitions）](#type-definitions)
+  * [别名定义（Alias definitions）](#别名定义alias-definitions)
+  * [类型定义（Type definitions）](#类型定义type-definitions)
     * [Fundamental value types](#fundamental-value-types)
       * [Numeric types](#numeric-types)
       * [Container types](#container-types)
@@ -41,11 +41,11 @@
 
 ## 语法
 
-本节使用[EBNF语法]定义组件，该语法解析介于纯粹抽象语法树（如WebAssembly核心规范的[结构部分][Structure Section]）和完整文本格式（如WebAssembly核心规范的[文本格式部分][Text Format Section]之间的内容。目标是平衡完整性和简洁性，只需提供足够的细节来编写示例并以[二进制格式][Binary Format Section]部分的样式定义[二进制格式(binary format)](Binary.md) ，详细严谨的语法将推迟到[正式规范](../../spec/)。
+本节使用[EBNF语法]定义组件，该语法解析介于纯粹抽象语法树（如Core WebAssembly规范的[结构部分][Structure Section]）和完整文本格式（如Core WebAssembly规范的[文本格式部分][Text Format Section]之间的内容。目标是平衡完整性和简洁性，只需提供足够的细节来编写示例并以[二进制格式][Binary Format Section]部分的样式定义[二进制格式(binary format)](Binary.md) ，详细严谨的语法将推迟到[正式规范](../../spec/)。
 
-语法模糊解释的主要方式是关于定义的使用，其中引用`X`定义的索引（写作`<Xidx>`）在实际文本格式中应明确允许标识符 (`<id>`)，在解析时检查标识符是否解析为`X`定义，然后将解析后的索引嵌入到AST中。
+语法简化的主要方法是定义的使用，在实际文本格式中使用标识符（`<id>`）显示地引用定义`X`的索引（写作`<Xidx>`），在解析时检查标识符是否解析为`X`定义，然后将解析后的索引嵌入到AST中。
 
-此外，假定了下面未明确定义的WebAssembly核心文本格式定义的标准[缩写][abbreviations]（例如，内联导出定义*inline export definitions*）。
+此外，假定了下面未明确定义的Core WebAssembly文本格式定义的标准[缩写][abbreviations]（例如，内联导出定义*inline export definitions*）。
 
 [EBNF语法]: https://zh.wikipedia.org/wiki/%E6%89%A9%E5%B1%95%E5%B7%B4%E7%A7%91%E6%96%AF%E8%8C%83%E5%BC%8F
 
@@ -69,13 +69,13 @@ definition ::= core-prefix(<core:module>)
 
 其中，当 X 解析为 '(' Y ')' 时，core-prefix(X) 解析为 '(' 'core' Y ')'
 ```
-组件类似于WebAssembly核心模块，其包含的定义是无环的：定义只能引用前面的定义（在AST、文本格式和二进制格式中）。但与模块不同的是，组件可以任意交错不同类型的定义。
+组件类似于Core WebAssembly模块，其包含的定义是无环的：定义只能引用先前的定义（在AST、文本格式和二进制格式中）。但与模块不同的是，组件可以任意交错不同类型的定义。
 
-元函数(meta-function)`core-prefix`是WebAssembly核心定义的语法规则解析的同一转换，但会在最左侧`(`后添加`core`标志。例如，`core:module`认作`(module (func))`，因此`core-prefix(<core:module>)`认作`(core module (func))`。请注意，内部的`func`不需要`core`前缀；`core`标志用于标记从解析组件定义到核心定义的*转换*。
+元函数(meta-function)`core-prefix`把用于解析Core WebAssembly定义的语法规则进行相同的转换，但会在最左侧`(`后添加`core`标志。例如，当`core:module`代表`(module (func))`时，则`core-prefix(<core:module>)`为`(core module (func))`。请注意，内部的`func`不需要`core`前缀；前缀`core`标识用于表示解析从组件定义*过渡*为核心定义。
 
-组件模型未修改[`core:module`]制品，因此组件嵌入了当前标准的WebAssembly核心（文本和二进制格式）模块，允许复用未经修改的WebAssembly核心实现。目前WebAssembly核心未包含`core:instance`制品，但当WebAssembly核心采纳[模块连接(module-linking）][module-linking]提案后则会涵盖。下面将介绍新的核心定义及对应的组件级部分。最后，现有的[`core:type`]制品按模块连接提案扩展增加核心模块类型。因此，总体思路是将核心定义（在AST、二进制和文本格式中）作为已添加至WebAssembly核心中，因此最终可以分层共享解码和验证的实现。
+组件模型未修改[`core:module`]项目，因此组件嵌入了当前标准的Core WebAssembly（文本和二进制格式）模块，允许复用未经修改的Core WebAssembly实现。目前Core WebAssembly不包含`core:instance`项目，但当Core WebAssembly采纳[模块链接(module-linking）][module-linking]提案后则会涵盖。下面将介绍新的核心定义及对应的组件级部分。最后，现有的[`core:type`]项目按模块链接提案扩展增加核心模块类型。因此，总体思路是将核心定义（在AST、二进制和文本格式中）作为已添加至Core WebAssembly中，因此最终可以分层共享解码和验证的实现。
 
-接下来的定义类型是递归地定义组件自身，因此，形成了所有其他类型定义只出现在叶子节点上的组件树。例如，基于目前定义的内容，我们可以编写如下组件：
+接下来的定义类型是组件自身的递归定义，由此形成的组件树中所有其他类型定义只出现在叶子节点上。例如，基于目前定义的内容，我们可以编写如下组件：
 ```wasm
 (component
   (component
@@ -96,7 +96,7 @@ definition ::= core-prefix(<core:module>)
 
 #### 索引空间（Inedx Spaces）
 
-类似于[WebAssembly核心][Core Indices]，组件模型将每个`definition`放入一组固定的*索引空间*，从而允许后续定义（在文本和二进制格式中）通过非负整数*索引*引用该定义。在定义、验证和执行组件时，有5个组件级索引空间（component-level index spaces）：
+类似于[Core WebAssembly][Core Indices]，组件模型将每个`definition`放入一组固定的*索引空间*，从而允许后续定义（在文本和二进制格式中）通过非负整数*索引*引用该定义。在定义、验证和执行组件时，有5个组件级索引空间（component-level index spaces）：
 * (component) functions
 * (component) values
 * (component) types
@@ -114,9 +114,9 @@ WebAssembly 1.0也存在5个核心索引空间：
 * module instances
 * modules
 
-实现时需维护共12个索引空间，例如验证时组件。此处12个索引空间与下方`sort`制品的terminals 1:1对应，因此 “sort” 和 “索引空间(index space)”可以互换使用。
+一个实现需要维护的总共12个索引空间，例如验证组件。此处12个索引空间与下方`sort`项目的终端符 1:1对应，因此 “sort” 和 “索引空间(index space)” 可以互换使用。
 
-类似于[WebAssembly核心][Core Identifiers]，组件模型的文本格式允许使用*标识符(identifiers)*代替索引，这些标识符会被解析为AST的索引（在此基础上定义验证和执行）。因此，下面两个组件等价：
+类似于[Core WebAssembly][Core Identifiers]，组件模型的文本格式允许使用*标识符(identifiers)*代替索引，这些标识符会被解析为AST的索引（在此基础上定义验证和执行）。因此，下面两个组件等价：
 ```wasm
 (component
   (core module (; empty ;))
@@ -141,9 +141,9 @@ WebAssembly 1.0也存在5个核心索引空间：
 
 ### 实例定义（Instance definitions）
 
-鉴于模块和组件代表不可变*代码*，实例(instance)将代码与潜在可变的*状态*（potentially-mutable state，例如线性内存）相关联，因此在*运行*代码前必须创建实例。实例定义通过选择一个模块或组件，并提供一组命名的*参数(arguments)*来满足所选模块或组件的所有命名*导入(imports)*，从而创建模块或组件实例。
+鉴于模块和组件代表不可变的*代码*，实例(instance)将代码与潜在可变的*状态*（potentially-mutable state，例如线性内存）相关联，因此在*运行*代码前必须创建实例。实例定义通过选择一个模块或组件，并提供一组命名的*参数(arguments)*来满足所选模块或组件的所有命名*导入(imports)*，从而创建模块或组件实例。
 
-定义核心模块实例的语法为：
+定义core:instance实例的语法为：
 ```ebnf
 core:instance       ::= (instance <id>? <core:instancexpr>)
 core:instanceexpr   ::= (instantiate <core:moduleidx> <core:instantiatearg>*)
@@ -160,21 +160,13 @@ core:sort           ::= func
                       | instance
 core:inlineexport   ::= (export <core:name> <core:sortidx>)
 ```
-当通过`instantiate`实例化模块时，核心模块的两级导入按如下方式解析：
-1. The first `core:name` of the import is looked up in the named list of
-   `core:instantiatearg` to select a core module instance. (In the future,
-   other `core:sort`s could be allowed if core wasm adds single-level
-   imports.)
-2. The second `core:name` of the import is looked up in the named list of
-   exports of the core module instance found by the first step to select the
-   imported core definition.
+当通过`instantiate`实例化模块时，核心模块的双层导入(two-level imports)按如下方式解析：
+1. 导入的`core:name`的第一项（如：`import "a" "one"`中的`"a"`），通过在`core:instantiatearg`的命名列表中查找以选择核心模块实例(core module instance)。（未来，当core wasm增加单层导入(single-level imports)时支持其他的`core:sort`导入）
+2. 导入的`core:name`的第二项（如：`import "a" "one"`中的`"one"`），通过在上述选择的核心模块实例查找导出(export)以确定导入的核心定义(core definition)
 
-Each `core:sort` corresponds 1:1 with a distinct [index space] that contains
-only core definitions of that *sort*. The `u32` field of `core:sortidx`
-indexes into the sort's associated index space to select a definition.
+每个`core:sort`都与包含*该类*核心定义的独立[索引空间][index space]1:1匹配。`core:sortidx`中的`u32`字段用于选择一个其对应索引空间的定义。
 
-Based on this, we can link two core modules `$A` and `$B` together with the
-following component:
+在此基础上，我们可以将两个核心模块$A和$B以下组件链接在一起：
 ```wasm
 (component
   (core module $A
@@ -187,19 +179,11 @@ following component:
   (core instance $b (instantiate $B (with "a" (instance $a))))
 )
 ```
-To see examples of other sorts, we'll need `alias` definitions, which are
-introduced in the next section.
+查看其他类别的案例，我们需要下一节介绍的`alias`定义。
 
-The `<core:inlineexport>*` form of `core:instanceexpr` allows module instances
-to be created by directly tupling together preceding definitions, without the
-need to `instantiate` a helper module. The `<core:inlineexport>*` form of
-`core:instantiatearg` is syntactic sugar that is expanded during text format
-parsing into an out-of-line instance definition referenced by `with`. To show
-an example of these, we'll also need the `alias` definitions introduced in the
-next section.
+`core:instanceexpr`的`<core:inlineexport>*`形式允许把先前定义组合在一起直接创建模块实例，无需`instantiate`辅助模块。`core:instantiatearg`的`<core:inlineexport>*`形式为语法糖，在文本解析时扩展通过`with`引用外部实例定义。为了展示这些示例，我们依然需要下一节介绍的`alias`定义。
 
-The syntax for defining component instances is symmetric to core module
-instances, but with an expanded component-level definition of `sort`:
+定义组件实例的语法与核心模块实例保持对称，但是在组件级别扩展了`sort`定义：
 ```ebnf
 instance       ::= (instance <id>? <instanceexpr>)
 instanceexpr   ::= (instantiate <componentidx> <instantiatearg>*)
@@ -216,35 +200,18 @@ sort           ::= core <core:sort>
                  | instance
 inlineexport   ::= (export <exportname> <sortidx>)
 ```
-Because component-level function, type and instance definitions are different
-than core-level function, type and instance definitions, they are put into
-disjoint index spaces which are indexed separately. Components may import
-and export various core definitions (when they are compatible with the
-[shared-nothing] model, which currently means only `module`, but may in the
-future include `data`). Thus, component-level `sort` injects the full set
-of `core:sort`, so that they may be referenced (leaving it up to validation
-rules to throw out the core sorts that aren't allowed in various contexts).
+由于组件级(component-level)的函数、类型和实例与核心级(core-level)有所区别，它们被放置在不同的索引空间中并进行单独索引。组件可以导入和导出各种核心定义（需与[无共享(shared-nothing)][shared-nothing]模型兼容，当前仅适用于`module`，未来可能包含`data`）。因此，组件级`sort`将完整的`core:sort`集合注入其中用于引用（由验证规则丢弃上下文不允许的核心类别）。
 
-The `name` production reuses the `core:name` quoted-string-literal syntax of
-Core WebAssembly (which appears in core module imports and exports and can
-contain any valid UTF-8 string).
+`name`复用Core WebAssembly的`core:name`引号字符串字面量语法（出现于核心模块的导入和导出且可包含任何有效UTF-8字符串）。
 
-🪙 The `value` sort refers to a value that is provided and consumed during
-instantiation. How this works is described in the
-[value definitions](#value-definitions) section.
+🪙 sort的`value`指的是实例化过程中提供和消耗的制。其工作方式在[值定义](#值定义value-definitions)部分详细介绍。
 
-To see a non-trivial example of component instantiation, we'll first need to
-introduce a few other definitions below that allow components to import, define
-and export component functions.
+在介绍组件实例化的复杂示例之前，我们需引入几个其他定义，它们允许组件导入、定义和导出组件函数。
 
 
-### Alias Definitions
+### 别名定义（Alias Definitions）
 
-Alias definitions project definitions out of other components' index spaces and
-into the current component's index spaces. As represented in the AST below,
-there are three kinds of "targets" for an alias: the `export` of a component
-instance, the `core export` of a core module instance and a definition of an
-`outer` component (containing the current component):
+别名定义项将其他组件索引空间中的定义映射到当前组件索引空间中。如下述的AST所示，别名有三种"目标(targets)"：组件实例的导出`export`、核心模块实例的核心导出`core export`以及外部组件(`outer` component)定义（包含当前组件）：
 ```ebnf
 alias            ::= (alias <aliastarget> (<sort> <id>?))
 aliastarget      ::= export <instanceidx> <name>
