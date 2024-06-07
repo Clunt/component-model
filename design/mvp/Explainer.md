@@ -218,32 +218,17 @@ aliastarget      ::= export <instanceidx> <name>
                    | core export <core:instanceidx> <core:name>
                    | outer <u32> <u32>
 ```
-If present, the `id` of the alias is bound to the new index added by the alias
-and can be used anywhere a normal `id` can be used.
+如果存在别名，其`id`会关联所添加的新索引，然后可使用于任何`id`所在的地方。
 
-In the case of `export` aliases, validation ensures `name` is an export in the
-target instance and has a matching sort.
+关于`export`别名，校验保证`name`是目标实例的导出且匹配类别(sort)。
 
-In the case of `outer` aliases, the `u32` pair serves as a [de Bruijn
-index], with first `u32` being the number of enclosing components/modules to
-skip and the second `u32` being an index into the target's sort's index space.
-In particular, the first `u32` can be `0`, in which case the outer alias refers
-to the current component. To maintain the acyclicity of module instantiation,
-outer aliases are only allowed to refer to *preceding* outer definitions.
+关于`outer`别名，`u32`对作为[德布鲁因索引(de Bruijn index)][de Bruijn index]，第一个u32`是需跳过的封装组件/模块的数量，第二个`u32`是目标类别索引空间的索引。尤其，第一个`u32`允许为`0`，此时外部别名(outer alias)引用当前组件。为了保持模块实例化的无环性，外部别名只被允许指向*先前(的外部定义。
 
-Components containing outer aliases effectively produce a [closure] at
-instantiation time, including a copy of the outer-aliased definitions. Because
-of the prevalent assumption that components are immutable values, outer aliases
-are restricted to only refer to immutable definitions: non-resource types,
-modules and components. (In the future, outer aliases to all sorts of
-definitions could be allowed by recording the statefulness of the resulting
-component in its type via some kind of "`stateful`" type attribute.)
+包含外部别名(outer aliases)的组件在实例化时，实际上会产生一个[闭包][closure]，包含外部别名定义的副本。因为普遍假设组件是不可变的值，所以仅限于引用不可变的定义：非自愿类型、模块和组件。（未来，可以通过某种"`stateful`"类型属性记录结果组件(resulting component)在其类型中的状态，从而允许所有类别的定义支持外部别名）
 
-Both kinds of aliases come with syntactic sugar for implicitly declaring them
-inline:
+这两种别名都具备内联隐式声明的语法糖：
 
-For `export` aliases, the inline sugar extends the definition of `sortidx`
-and the various sort-specific indices:
+对于`export`别名，内联语法糖扩展了`sortidx`的定义和各种类别明确(sort-specific)的索引：
 ```ebnf
 sortidx     ::= (<sort> <u32>)          ;; as above
               | <inlinealias>
@@ -251,14 +236,12 @@ Xidx        ::= <u32>                   ;; as above
               | <inlinealias>
 inlinealias ::= (<sort> <u32> <name>+)
 ```
-If `<sort>` refers to a `<core:sort>`, then the `<u32>` of `inlinealias` is a
-`<core:instanceidx>`; otherwise it's an `<instanceidx>`. For example, the
-following snippet uses two inline function aliases:
+如果`<sort>`引用了`<core:sort>`，那么`inlinealias`的`<u32>`则是`<core:instanceidx>`；否则是`<instanceidx>`。例如，下面的代码片段使用了两个内联函数别名：
 ```wasm
 (instance $j (instantiate $J (with "f" (func $i "f"))))
 (export "x" (func $j "g" "h"))
 ```
-which are desugared into:
+脱糖后为：
 ```wasm
 (alias export $i "f" (func $f_alias))
 (instance $j (instantiate $J (with "f" (func $f_alias))))
@@ -267,9 +250,7 @@ which are desugared into:
 (export "x" (func $h_alias))
 ```
 
-For `outer` aliases, the inline sugar is simply the identifier of the outer
-definition, resolved using normal lexical scoping rules. For example, the
-following component:
+对于`outer`别名，内联语法糖仅为外部定义的标识符，使用正常的词法作用域规则解析。例如，以下组件：
 ```wasm
 (component
   (component $C ...)
@@ -278,7 +259,7 @@ following component:
   )
 )
 ```
-is desugared into:
+脱糖后为：
 ```wasm
 (component $Parent
   (component $C ...)
@@ -289,8 +270,7 @@ is desugared into:
 )
 ```
 
-Lastly, for symmetry with [imports][func-import-abbrev], aliases can be written
-in an inverted form that puts the sort first:
+最后，为了与[imports][func-import-abbrev]对称，别名可以颠倒书写顺序，把类别放到前面：
 ```wasm
     (func $f (import "i" "f") ...type...) ≡ (import "i" "f" (func $f ...type...))   (WebAssembly 1.0)
           (func $f (alias export $i "f")) ≡ (alias export $i "f" (func $f))
@@ -298,7 +278,7 @@ in an inverted form that puts the sort first:
 (core func $f (alias core export $i "f")) ≡ (alias core export $i "f" (core func $f))
 ```
 
-With what's defined so far, we're able to link modules with arbitrary renamings:
+通过目前的定义，我们能够以任意重命名的方式链接模块：
 ```wasm
 (component
   (core module $A
@@ -311,34 +291,32 @@ With what's defined so far, we're able to link modules with arbitrary renamings:
   )
   (core instance $a (instantiate $A))
   (core instance $b1 (instantiate $B
-    (with "a" (instance $a))                      ;; no renaming
+    (with "a" (instance $a))                      ;; 未重命名
   ))
   (core func $a_two (alias core export $a "two")) ;; ≡ (alias core export $a "two" (core func $a_two))
   (core instance $b2 (instantiate $B
     (with "a" (instance
-      (export "one" (func $a_two))                ;; renaming, using out-of-line alias
+      (export "one" (func $a_two))                ;; 重命名，使用out-of-line别名
     ))
   ))
   (core instance $b3 (instantiate $B
     (with "a" (instance
-      (export "one" (func $a "three"))            ;; renaming, using <inlinealias>
+      (export "one" (func $a "three"))            ;; 重命名，使用<inlinealias>
     ))
   ))
 )
 ```
-To show analogous examples of linking components, we'll need component-level
-type and function definitions which are introduced in the next two sections.
+为了展示链接组件的类似示例，我们需要组件级类型和函数定义，这将在接下来的两节中介绍。
 
 
-### Type Definitions
+### 类型定义（Type Definitions）
 
-The syntax for defining core types extends the existing core type definition
-syntax, adding a `module` type constructor:
+定义核心类型语法基于现有进行了扩展，增加`module`类型构造器：
 ```ebnf
-core:rectype     ::= ... from the Core WebAssembly spec
-core:typedef     ::= ... from the Core WebAssembly spec
-core:subtype     ::= ... from the Core WebAssembly spec
-core:comptype    ::= ... from the Core WebAssembly spec
+core:rectype     ::= ... 来自Core WebAssembly规范
+core:typedef     ::= ... 来自Core WebAssembly规范
+core:subtype     ::= ... 来自Core WebAssembly规范
+core:comptype    ::= ... 来自Core WebAssembly规范
                    | <core:moduletype>
 core:moduletype  ::= (module <core:moduledecl>*)
 core:moduledecl  ::= <core:importdecl>
@@ -351,34 +329,16 @@ core:importdecl  ::= (import <core:name> <core:name> <core:importdesc>)
 core:exportdecl  ::= (export <core:name> <core:exportdesc>)
 core:exportdesc  ::= strip-id(<core:importdesc>)
 
-where strip-id(X) parses '(' sort Y ')' when X parses '(' sort <id>? Y ')'
+当 X 解析为 '(' sort <id>? Y ')'，则 strip-id(X) 解析为 '(' sort Y ')'
 ```
 
-Here, `core:comptype` (short for "composite type") as defined in the [GC]
-proposal is extended with a `module` type constructor. The GC proposal also
-adds recursion and explicit subtyping between core wasm types. Owing to
-their different requirements and intended modes of usage, module types
-support implicit subtyping and are not recursive. Thus, the existing core
-validation rules would require the declared supertypes of module types to be
-empty and disallow recursive use of module types.
+此处，[GC]提案中定义的`core:comptype`（复合类型"composite type"的简称）扩展了`module`类型构造器。GC提案还在核心wasm类型中增加了递归和显式的子类型。由于它们有不同的需求和预期使用方式，模块类型支持隐式自类型话且非递归。以鸟巢，现有的核心验证规则需要模块类型的声明超类为空并禁止递归使用模块类型。
 
-In the MVP, validation will also reject `core:moduletype` defining or aliasing
-other `core:moduletype`s, since, before module-linking, core modules cannot
-themselves import or export other core modules.
+在MVP中，验证规则会丢弃`core:moduletype`定义或`core:moduletype`的别名，因为在模块链接之前，核心模块不能自己导入或导出其他核心模块。
 
-The body of a module type contains an ordered list of "module declarators"
-which describe, at a type level, the imports and exports of the module. In a
-module-type context, import and export declarators can both reuse the existing
-[`core:importdesc`] production defined in WebAssembly 1.0, with the only
-difference being that, in the text format, `core:importdesc` can bind an
-identifier for later reuse while `core:exportdesc` cannot.
+模块类型主体包含有序的“模块声明符(module declarators)”列表，它们在类型级别描述了模块的导入和导出。在模块类型上下文中，导入和导出声明符都可以在WebAssembly 1.0定义的[`core:importdesc`]中复用，唯一区别是在文本格式中`core:importdesc`可以绑定一个标识符在后续复用，但`core:exportdesc`不可以。
 
-With the Core WebAssembly [type-imports], module types will need the ability to
-define the types of exports based on the types of imports. In preparation for
-this, module types start with an empty type index space that is populated by
-`type` declarators, so that, in the future, these `type` declarators can refer to
-type imports local to the module type itself. For example, in the future, the
-following module type would be expressible:
+随着Core WebAssembly的[类型导入(type-imports)][type-imports]，模块类型将需要根据导入类型的能力来定义导出类型。为此，模块类型以空类型索引空间开始，该空间由`type`声明符填充。以便未来这些`type`声明符可以引用模块类型自身的本地类型导入。例如，未来以下模块类型将可表达：
 ```wasm
 (component $C
   (core type $M (module
