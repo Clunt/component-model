@@ -116,7 +116,7 @@ WebAssembly 1.0也存在5个核心索引空间：
 
 实现需要维护共12个索引空间，例如验证组件。此处12个索引空间与下方`类别`项目的终端符 1:1对应，因此 “类别(sort)” 和 “索引空间(index space)” 可以互换使用。
 
-类似于[Core WebAssembly][Core Identifiers]，组件模型的文本格式允许使用*标识符(identifiers)*代替索引，这些标识符会被解析为AST的索引（在此基础上定义验证和执行）。因此，下面两个组件等价：
+类似于[Core WebAssembly][Core Identifiers]，组件模型的文本格式允许使用*标识符*(*identifiers*)代替索引，这些标识符会被解析为AST的索引（在此基础上定义验证和执行）。因此，下面两个组件等价：
 ```wasm
 (component
   (core module (; empty ;))
