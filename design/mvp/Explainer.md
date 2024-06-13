@@ -9,7 +9,7 @@
   * [实例定义（Instance definitions）](#实例定义instance-definitions)
   * [别名定义（Alias definitions）](#别名定义alias-definitions)
   * [类型定义（Type definitions）](#类型定义type-definitions)
-    * [Fundamental value types](#fundamental-value-types)
+    * [基本值类型（Fundamental value types）](#基本值类型fundamental-value-types)
       * [Numeric types](#numeric-types)
       * [Container types](#container-types)
       * [Handle types](#handle-types)
@@ -338,7 +338,7 @@ core:exportdesc  ::= strip-id(<core:importdesc>)
 
 模块类型主体包含有序的“模块声明符(module declarators)”列表，它们在类型级别描述了模块的导入和导出。在模块类型上下文中，导入和导出声明符都可以在WebAssembly 1.0定义的[`core:importdesc`]中复用，唯一区别是在文本格式中`core:importdesc`可以绑定一个标识符在后续复用，但`core:exportdesc`不可以。
 
-随着Core WebAssembly的[类型导入(type-imports)][type-imports]，模块类型将需要根据导入类型的能力来定义导出类型。为此，模块类型以空类型索引空间开始，该空间由`type`声明符填充。以便未来这些`type`声明符可以引用模块类型自身的本地类型导入。例如，未来以下模块类型将可表达：
+随着Core WebAssembly的[类型导入(type-imports)][type-imports]，模块类型将需要根据导入类型的能力来定义导出类型。为此，模块类型以空类型索引空间开始，该空间由`type`声明符填充。以便未来这些`type`声明符可以引用模块类型自身的本地类型导入。例如，未来以下模块类型将可表达为：
 ```wasm
 (component $C
   (core type $M (module
@@ -348,20 +348,11 @@ core:exportdesc  ::= strip-id(<core:importdesc>)
   ))
 )
 ```
-In this example, `$M` has a distinct type index space from `$C`, where element
-0 is the imported type, element 1 is the `struct` type, and element 2 is an
-implicitly-created `func` type referring to both.
+在此示例中，`$M`具有不同于`$C`的类型索引空间，元素0是导入类型，元素1是`struct`类型，元素2是隐式创建的引用了前两个元素的`func`类型。
 
-Lastly, the `core:alias` module declarator allows a module type definition to
-reuse (rather than redefine) type definitions in the enclosing component's core
-type index space via `outer` `type` alias. In the MVP, validation restricts
-`core:alias` module declarators to *only* allow `outer` `type` aliases (into an
-enclosing component's or component-type's core type index space). In the
-future, more kinds of aliases would be meaningful and allowed.
+最后，`core:alias`模块声明符允许模块类型定义通过`outer` `type`别名在闭合组件核心的类型索引空间中复用（而不是重新定义）类型定义。MVP中，验证限制`core:alias`模块声明*仅*允许`outer` `type`别名（闭合组件或组件类型的核心类型索引空间）。未来，更多类型的别名将有意义并被允许。
 
-As an example, the following component defines two semantically-equivalent
-module types, where the former defines the function type via `type` declarator
-and the latter refers via `alias` declarator.
+举例来说，下面的组件定义了两个语义等价的模块类型，前者通过`type`声明符定义函数类型，后者通过`alias`声明符引用函数类型。
 ```wasm
 (component $C
   (core type $C1 (module
@@ -378,11 +369,7 @@ and the latter refers via `alias` declarator.
 )
 ```
 
-Component-level type definitions are symmetric to core-level type definitions,
-but use a completely different set of value types. Unlike [`core:valtype`]
-which is low-level and assumes a shared linear memory for communicating
-compound values, component-level value types assume no shared memory and must
-therefore be high-level, describing entire compound values.
+组件级类型定义同核心级类型定义对称，但使用一组完全不同的值类型。不同于假设共享线性内存来传递复合值的低级类型[`core:valtype`]，组件级值类型假设没有共享内存，因此其必须高级别的，能描述全部的复合值。
 ```ebnf
 type          ::= (type <id>? <deftype>)
 deftype       ::= <defvaltype>
@@ -434,60 +421,41 @@ typebound     ::= (eq <typeidx>)
 valuebound    ::= (eq <valueidx>) 🪙
                 | <valtype> 🪙
 
-where bind-id(X) parses '(' sort <id>? Y ')' when X parses '(' sort Y ')'
+当 X 解析为 '(' sort Y ')'， bind-id(X) 解析为 '(' sort <id>? Y ')'
 ```
-Because there is nothing in this type grammar analogous to the [gc] proposal's
-[`rectype`], none of these types are recursive.
+因为这种类型语法中没有类似于[gc]提案的[`rectype`]，所以这些类型都是非递归的。
 
-#### Fundamental value types
+#### 基本值类型（Fundamental value types）
 
-The value types in `valtype` can be broken into two categories: *fundamental*
-value types and *specialized* value types, where the latter are defined by
-expansion into the former. The *fundamental value types* have the following
-sets of abstract values:
+值类型在`valtype`可被分为两类：*基本（fundamental）*值类型和*特殊（specialized）*值类型，其中特殊值类型定义由扩展基本值类型而来。*基本值类型*包括以下几组抽象值：
 | Type                      | Values |
 | ------------------------- | ------ |
-| `bool`                    | `true` and `false` |
-| `s8`, `s16`, `s32`, `s64` | integers in the range [-2<sup>N-1</sup>, 2<sup>N-1</sup>-1] |
-| `u8`, `u16`, `u32`, `u64` | integers in the range [0, 2<sup>N</sup>-1] |
-| `f32`, `f64`              | [IEEE754] floating-point numbers, with a single NaN value |
-| `char`                    | [Unicode Scalar Values] |
-| `record`                  | heterogeneous [tuples] of named values |
-| `variant`                 | heterogeneous [tagged unions] of named values |
-| `list`                    | homogeneous, variable-length [sequences] of values |
-| `own`                     | a unique, opaque address of a resource that will be destroyed when this value is dropped |
-| `borrow`                  | an opaque address of a resource that must be dropped before the current export call returns |
+| `bool`                    | `true` 和 `false` |
+| `s8`, `s16`, `s32`, `s64` | [-2<sup>N-1</sup>, 2<sup>N-1</sup>-1]范围内的整数 |
+| `u8`, `u16`, `u32`, `u64` | [0, 2<sup>N</sup>-1]范围内的整数 |
+| `f32`, `f64`              | [IEEE754] 浮点数，只有一个 NaN 值 |
+| `char`                    | [Unicode标量值（Unicode Scalar Values）][Unicode Scalar Values] |
+| `record`                  | 命名值的异构[元组（tuples）][tuples] |
+| `variant`                 | 命名值的异构[标签联合（tagged unions）][tagged unions] |
+| `list`                    | 相同类型、长度可变的[值序列（sequences）][sequences] |
+| `own`                     | 唯一、地址不透明的资源，当此值被丢弃时该资源将被销毁 |
+| `borrow`                  | 地址不透明的资源，当前导出调用返回之前该资源必须被丢弃 |
 
-How these abstract values are produced and consumed from Core WebAssembly
-values and linear memory is configured by the component via *canonical lifting
-and lowering definitions*, which are introduced [below](#canonical-definitions).
-For example, while abstract `variant`s contain a list of `case`s labelled by
-name, canonical lifting and lowering map each case to an `i32` value starting
-at `0`.
+组件如何通过*canonical lifting and lowering definitions*配置Core WebAssembly值和线性内存生产和使用这些抽象值，将在[下面](#canonical-definitions)介绍。例如，尽管抽象`变量（variant）`包含按名称标记的`实例（case）`列表，但canonical lifting and lowering会将每个实例映射到一个从`0`开始的`i32`值。
 
-##### Numeric types
+##### 数字类型（Numeric types）
 
-While core numeric types are defined in terms of sets of bit-patterns and
-operations that interpret the bits in various ways, component-level numeric
-types are defined in terms of sets of values. This allows the values to be
-translated between source languages and protocols that use different
-value representations.
+虽然核心数字类型根据一组位模式(bit-patterns)和解释位操作的多种方式定义，但组件级数字类型根据值集合定义。其允许在使用不同值表示的源语言和协议之间转换值。
 
-Core integer types are just bit-patterns that don't distinguish between signed
-and unsigned, while component-level integer types are sets of integers that
-either include negative values or don't. Core floating-point types have many
-distinct NaN bit-patterns, while component-level floating-point types have only
-a single NaN value. And boolean values in core wasm are usually represented as
-`i32`s where operations interpret all-zeros as `false`, while at the
-component-level there is a `bool` type with `true` and `false` values.
+核心整数类型仅是不区分正负符号的位模式，而组件级整数类型则是包含或不包含负值的整数集。核心浮点数类型有多种不同的NaN位模式，而组件级浮点数类型仅有一个NaN值。在核心wasm中，布尔值通常表示为`i32`，其所有零(all-zeros)运算解释为`false`，而组件级具有含`true`和`false`的`bool`类型。
 
-##### Container types
+##### 容器类型（Container types）
 
-The `record`, `variant`, and `list` types allow for grouping, categorizing,
-and sequencing contained values.
+`record`、`variant`和`list`类型允许对包含的值进行分组、分类和排序。
 
-##### Handle types
+##### 句柄类型（Handle types）
 
+`own`和`borrow`值类型均为*句柄类型*。句柄在逻辑上包含资源的不透明地址，避免在跨组件边界传递时复制资源。
 The `own` and `borrow` value types are both *handle types*. Handles logically
 contain the opaque address of a resource and avoid copying the resource when
 passed across component boundaries. By way of metaphor to operating systems,
