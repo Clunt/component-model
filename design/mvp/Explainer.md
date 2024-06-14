@@ -10,11 +10,11 @@
   * [别名定义（Alias definitions）](#别名定义alias-definitions)
   * [类型定义（Type definitions）](#类型定义type-definitions)
     * [基本值类型（Fundamental value types）](#基本值类型fundamental-value-types)
-      * [Numeric types](#numeric-types)
-      * [Container types](#container-types)
-      * [Handle types](#handle-types)
-    * [Specialized value types](#specialized-value-types)
-    * [Definition types](#definition-types)
+      * [数字类型（Numeric types）](#数字类型numeric-types)
+      * [容器类型（Container types）](#容器类型container-types)
+      * [句柄类型（Handle types）](#handle句柄类型-types)
+    * [特殊值类型（Specialized value types）](#特殊值类型specialized-value-types)
+    * [定义类型（Definition types）](#定义类型definition-types)
     * [Declarators](#declarators)
     * [Type checking](#type-checking)
   * [Canonical definitions](#canonical-definitions)
@@ -296,7 +296,7 @@ inlinealias ::= (<sort> <u32> <name>+)
   (core func $a_two (alias core export $a "two")) ;; ≡ (alias core export $a "two" (core func $a_two))
   (core instance $b2 (instantiate $B
     (with "a" (instance
-      (export "one" (func $a_two))                ;; 重命名，使用out-of-line别名
+      (export "one" (func $a_two))                ;; 重命名，使用界外(out-of-line)别名
     ))
   ))
   (core instance $b3 (instantiate $B
@@ -455,29 +455,15 @@ valuebound    ::= (eq <valueidx>) 🪙
 
 ##### 句柄类型（Handle types）
 
-`own`和`borrow`值类型均为*句柄类型*。句柄在逻辑上包含资源的不透明地址，避免在跨组件边界传递时复制资源。
-The `own` and `borrow` value types are both *handle types*. Handles logically
-contain the opaque address of a resource and avoid copying the resource when
-passed across component boundaries. By way of metaphor to operating systems,
-handles are analogous to file descriptors, which are stored in a table and may
-only be used indirectly by untrusted user-mode processes via their integer
-index in the table.
+`own`和`borrow`值类型均为*句柄类型*。句柄在逻辑上包含资源的不透明地址，避免在跨组件边界传递时复制资源。通过操作系统来比喻，句柄类似于文件描述符，它们存储在表中并只能通过其表中的整数索引被不受信任的用户模式进程间接地使用。
 
-In the Component Model, handles are lifted-from and lowered-into `i32` values
-that index an encapsulated per-component-instance *handle table* that is
-maintained by the canonical function definitions described
-[below](#canonical-definitions). In the future, handles could be
-backwards-compatibly lifted and lowered from [reference types]  (via the
-addition of a new `canonopt`, as introduced [below](#canonical-abi)).
+在组件模型中，句柄是从封装的每个组件实例(per-component-instance)*句柄表*中lifted-from和lowered-into的`i32`值，该表由[下面](#canonical-definitions)介绍的规范函数定义所维护。未来，句柄可以向后兼容引用类型的lifted和lowered（通过增加新的`canonopt`，[如下](#canonical-abi)介绍）。
 
-The uniqueness and dropping conditions mentioned above are enforced at runtime
-by the Component Model through these canonical definitions. The `typeidx`
-immediate of a handle type must refer to a `resource` type (described below)
-that statically classifies the particular kinds of resources the handle can
-point to.
+上述的唯一性和丢弃条件在运行时通过这些规范定义由组件模型强制执行。句柄类型目前的`typeidx`必须引用`resource`类型（如下所述），该类型静态地分类句柄可以指向特定种类的资源。
 
-#### Specialized value types
+#### 特殊值类型（Specialized value types）
 
+其余*特殊值类型*允许的值集由以下映射定义：
 The sets of values allowed for the remaining *specialized value types* are
 defined by the following mapping:
 ```
@@ -489,113 +475,43 @@ defined by the following mapping:
                                 string ↦ (list char)
 ```
 
-Specialized value types have the same set of semantic values as their
-corresponding despecialized types, but have distinct type constructors
-(which are not type-equal to the unspecialized type constructors) and
-thus have distinct binary encodings. This allows specialized value types to
-convey a more specific intent. For example, `result` isn't just a variant,
-it's a variant that *means* success or failure, so source-code bindings
-can expose it via idiomatic source-language error reporting. Additionally,
-this can sometimes allow values to be represented differently. For example,
-`string` in the Canonical ABI uses various Unicode encodings while
-`list<char>` uses a sequence of 4-byte `char` code points.  Similarly,
-`flags` in the Canonical ABI uses a bit-vector while an equivalent record
-of boolean fields uses a sequence of boolean-valued bytes.
+特殊值类型具有与其对应的非专门类型相同的语义值集，但具有不同的类型构造器（这些构造器于非专门的类型构造器不同），因此它们具有不同的二进制编码。这使得特殊值类型可以传达更具体的意图。例如，`result`不仅是变量variant，它还表示成功或失败的*含义*，因此源码绑定可以通过源语言的错误报告来显示它。此外，有时能以不同的方式表示值。例如，规范ABI(Canonical ABI)的`string`使用各种Unicode编码，而`list<char>`使用4字节的`char`代码序列。同样，规范ABI中的`flags`使用位向量(bit-vector)，而等效的布尔字段使用布尔值字节序列。
 
-Note that, at least initially, variants are required to have a non-empty list of
-cases. This could be relaxed in the future to allow an empty list of cases, with
-the empty `(variant)` effectively serving as an [empty type] and indicating
-unreachability.
+请注意，至少在初期，变量需要有非空项列表。将来可能会放开限制允许空项列表，其中空`(variant)`实际上作为一个[空类型(empty type)][empty type]且表示不可达。
 
-#### Definition types
 
-The remaining 4 type constructors in `deftype` use `valtype` to describe
-shared-nothing functions, resources, components, and component instances:
+#### 定义类型（Definition types）
 
-The `func` type constructor describes a component-level function definition
-that takes and returns a list of `valtype`. In contrast to [`core:functype`],
-the parameters and results of `functype` can have associated names which
-validation requires to be unique. To improve the ergonomics and performance of
-the common case of single-value-returning functions, function types may
-additionally have a single unnamed return type. For this special case, bindings
-generators are naturally encouraged to return the single value directly without
-wrapping it in any containing record/object/struct.
+`deftype`的剩余的4种类型构造器使用`valtype`描述无共享函数、资源、组件和组件实例：
 
-The `resource` type constructor creates a fresh type for each instance of the
-containing component (with "freshness" and its interaction with general
-type-checking described in more detail [below](#type-checking)). Resource types
-can be referred to by handle types (such as `own` and `borrow`) as well as the
-canonical built-ins described [below](#canonical-built-ins). The `rep`
-immediate of a `resource` type specifies its *core representation type*, which
-is currently fixed to `i32`, but will be relaxed in the future (to at least
-include `i64`, but also potentially other types). When the last handle to a
-resource is dropped, the resource's destructor function specified by the `dtor`
-immediate will be called (if present), allowing the implementing component to
-perform clean-up like freeing linear memory allocations.
+`func`类型构造器描述接收并返回`valtype`列表的组件级函数定义。与[`core:functype`]相反，`functype`的参数和返回值可以关联需校验唯一的名称。为了提升常见的单值函数(single-value-returning functions)的易用性和性能，函数类型可能还有一个单独的未命名的返回类型。对于这种特殊情况，建议绑定生成器直接返回单个值，而不要将其包装在record/object/struct之中
 
-The `instance` type constructor describes a list of named, typed definitions
-that can be imported or exported by a component. Informally, instance types
-correspond to the usual concept of an "interface" and instance types thus serve
-as static interface descriptions. In addition to the S-Expression text format
-defined here, which is meant to go inside component definitions, interfaces can
-also be defined as standalone, human-friendly text files in the [`wit`](WIT.md)
-[Interface Definition Language].
+`resource`类型构造器为包含组件的每个实例创建新(fresh)类型（"freshness"及其与一般类型检查的交互在[下面](#type-checking)详细描述）。资源类型可以被句柄类型（如`own`和`borrow`）以及[下面](#canonical-built-ins)描述的规范哪件类型引用。`resource`类型目前的`rep`指定其*核心表示类型(core representation type)*，目前固定为`i32`，但未来会放宽（至少包括`i64`，但也可能包括其他类型）。当最后一个指向资源的句柄被丢弃时，将调用`dtor`当前指定的资源的析构函数（如果存在），允许实现组件执行清理，如释放线性内存分配。
 
-The `component` type constructor is symmetric to the core `module` type
-constructor and contains *two* lists of named definitions for the imports
-and exports of a component, respectively. As suggested above, instance types
-can show up in *both* the import and export types of a component type.
+`instance`类型构造器描述了可以由组件导入或导出命名的、类型化的定义列表。通俗地说，实例类型(instance types)对应于“接口(interface)”的常见概念，因此实例类型作为静态接口描述。除了在此定义中的S-Expression文本格式外（旨在放入组件定义中），接口还可以使用[接口定义语言(Interface Definition Language)][Interface Definition Language][`wit`](WIT.md)定义为独立的、人类友好的文本文件 the [`wit`](WIT.md)
 
-Both `instance` and `component` type constructors are built from a sequence of
-"declarators", of which there are four kinds&mdash;`type`, `alias`, `import` and
-`export`&mdash;where only `component` type constructors can contain `import`
-declarators. The meanings of these declarators is basically the same as the
-core module declarators introduced above, but expanded to cover the additional
-capabilities of the component model.
 
-#### Declarators
+`component`类型构造器于核心`module`类型构造器对称，包含*两个*命名定义列表，分别用于组件的导入和导出。如上所述，实例(instance)类型可以在组件(component)类型的导入和导出*两者*中出现。
 
-The `importdecl` and `exportdecl` declarators correspond to component `import`
-and `export` definitions, respectively, allowing an identifier to be bound for
-use by subsequent declarators. The definitions of `label`, `importname` and
-`exportname` are given in the [imports and exports](#import-and-export-definitions)
-section below. Following the precedent of [`core:typeuse`], the text format
-allows both references to out-of-line type definitions (via `(type <typeidx>)`)
-and inline type expressions that the text format desugars into out-of-line type
-definitions.
+`instance`和`component`类型构造器都是由四种类型&mdash;`type`、`alias`、`import` 和 `export`&mdash;“声明符(declarators)”序列构成，其中只有`component`类型构造器可以包含`import`声明符。这些声明符的含义与上面介绍的核心模块声明符基本相同，但扩展至覆盖组件模型的额外功能。
 
-🪙 The `value` case of `externdesc` describes a runtime value that is imported or
-exported at instantiation time as described in the
-[value definitions](#value-definitions) section below.
+#### 声明符（Declarators）
 
-The `type` case of `externdesc` describes an imported or exported type along
-with its "bound":
+`importdecl`和`exportdecl`声明符分别对应组件的`import`和`export`定义，允许绑定标识符被后续声明符使用。`label`、`importname`和`exportname`定义在下面的[导入和导出](#import-and-export-definitions)部分给出。
+按照[`core:typeuse`]的先例，文本格式允许引用界外类型定义（通过`(type <typeidx>)`）和内联类型表达式，问呗格式将其脱糖为界外类型定义。
 
-The `sub` bound declares that the imported/exported type is an *abstract type*
-which is a *subtype* of some other type. Currently, the only supported bound is
-`resource` which (following the naming conventions of the [GC] proposal) means
-"any resource type". Thus, only resource types can be imported/exported
-abstractly, not arbitrary value types. This allows type imports to always be
-compiled independently of their arguments using a "universal representation" for
-handle values (viz., `i32`, as defined by the [Canonical ABI](CanonicalABI.md)).
-In the future, `sub` may be extended to allow referencing other resource types,
-thereby allowing abstract resource subtyping.
+🪙 `externdesc`的`value`项描述了在下面的[值定义](#value-definitions)章节描述的实例化时导入或导出的运行时值。
 
-The `eq` bound says that the imported/exported type must be structurally equal
-to some preceding type definition. This allows:
-* an imported abstract type to be re-exported;
-* components to introduce another label for a preceding abstract type (which
-  can be necessary when implementing multiple independent interfaces with the
-  same resource); and
-* components to attach transparent type aliases to structural types to be
-  reflected in source-level bindings (e.g., `(export "bytes" (type (eq (list u64))))`
-  could generate in C++ a `typedef std::vector<uint64_t> bytes` or in JS an
-  exported field named `bytes` that aliases `Uint64Array`.
+`externdesc`的`type`项描述了导入或导出的类型及其"绑定(bound)"：
 
-Relaxing the restrictions of `core:alias` declarators mentioned above, `alias`
-declarators allow both `outer` and `export` aliases of `type` and `instance`
-sorts. This allows the type exports of `instance`-typed import and export
-declarators to be used by subsequent declarators in the type:
+`sub`绑定声明导入/导出类型为其他*子类型*的*抽象类型(abstract type)*，目前，唯一支持绑定的是`resource`（按照[GC]提案的命名约定），其表示“任何资源(resource)类型”。因此，只用资源类型可以被抽象的导入/导出，而不是任意值类型。这允许类型导入总是可以独立于它们的参数使用句柄值的“通用表示”（即 `i32`，由[规范ABI](CanonicalABI.md)定义）进行编译。未来，`sub`可能会扩展以允许引用其他资源类型，从而允许抽象资源子类型。
+
+`eq`绑定说明导入/导出的类型必须与某个先前的类型定义在结构上相等。其允许：
+* 导入的抽象类型被重新导出;
+* 组件为前置的抽象类型引入另一个标签（当实现具有相同资源的多个独立接口时，这可能是必要的）；
+* 组件将透明类型别名(transparent type aliases)附加到结构类型(structural types)上，以反映在源级别的绑定中（例如，`(export "bytes" (type (eq (list u64))))`可以在C++中生成`typedef std::vector<uint64_t> bytes`或在JS中生成一个名为`bytes`的导出字段，该字段别名`Uint64Array`。
+
+放宽上述`core:alias`声明符的限制，`alias`声明符允许区分`type`和`instance`的别名`outer`和`export`。这允许后续类型声明符使用`instance`类型的导入和导出声明符导出的类型：
 ```wasm
 (component
   (import "fancy-fs" (instance $fancy-fs
@@ -609,14 +525,9 @@ declarators to be used by subsequent declarators in the type:
 )
 ```
 
-The `type` declarator is restricted by validation to disallow `resource` type
-definitions, thereby preventing "private" resource type definitions from
-appearing in component types and avoiding the [avoidance problem]. Thus, the
-only resource types possible in an `instancetype` or `componenttype` are
-introduced by `importdecl` or `exportdecl`.
+`type`声明符受到验证限制不允许`resource`类型定义，从而防止组件类型中出现“私有(private)”资源类型定义并避开[预防问题(avoidance problem)][avoidance problem]。因此，只有通过`importdecl`或`exportdecl`引入的资源类型才可能出现在`instancetype`或`componenttype`中。
 
-With what's defined so far, we can define component types using a mix of type
-definitions:
+到目前为止的定义，我们可以使用混合类型定义来定义组件类型：
 ```wasm
 (component $C
   (type $T (list (tuple string bool)))
@@ -637,8 +548,7 @@ definitions:
   ))
 )
 ```
-Note that the inline use of `$G` and `$U` are syntactic sugar for `outer`
-aliases.
+注意`$G`和`$U`的内联使用是`outer`别名的语法糖。
 
 #### Type Checking
 
