@@ -15,8 +15,8 @@
       * [句柄类型（Handle types）](#handle句柄类型-types)
     * [特殊值类型（Specialized value types）](#特殊值类型specialized-value-types)
     * [定义类型（Definition types）](#定义类型definition-types)
-    * [Declarators](#declarators)
-    * [Type checking](#type-checking)
+    * [声明符（Declarators）](#声明符declarators)
+    * [类型检查（Type Checking）](#类型检查type-checking)
   * [Canonical definitions](#canonical-definitions)
     * [Canonical ABI](#canonical-built-ins)
     * [Canonical built-ins](#canonical-built-ins)
@@ -550,27 +550,13 @@ defined by the following mapping:
 ```
 注意`$G`和`$U`的内联使用是`outer`别名的语法糖。
 
-#### Type Checking
+#### 类型检查（Type Checking）
 
-Like core modules, components have an up-front validation phase in which the
-definitions of a component are checked for basic consistency. Type checking
-is a central part of validation and, e.g., occurs when validating that the
-`with` arguments of an [`instantiate`](#instance-definitions) expression are
-type-compatible with the `import`s of the component being instantiated.
+类似于核心模块，组件在前期验证阶段(up-front validation phase)检查组件定义以确保基本的一致性。类型检查是验证的核心部分，例如，验证实例化（[`instantiate`](#instance-definitions)）表达式`with`参数与被实例化组件的`import`是否类型兼容时会进行类型检查。
 
-To incrementally describe how type-checking works, we'll start by asking how
-*type equality* works for non-resource, non-handle, local type definitions and
-build up from there.
+为了逐步描述类型检查是如何工作的，我们将从非资源、非句柄、本地类型定义的*类型等价性*开始并逐步加强。
 
-Type equality for almost all types (except as described below) is purely
-*structural*. In a structural setting, types are considered to be Abstract
-Syntax Trees whose nodes are type constructors with types like `u8` and
-`string` considered to be "nullary" type constructors that appear at leaves and
-non-nullary type constructors like `list` and `record` appearing at parent
-nodes. Then, type equality is defined to be AST equality. Importantly, these
-type ASTs do *not* contain any type indices or depend on index space layout;
-these binary format details are consumed by decoding to produce the AST. For
-example, in the following compound component:
+几乎所有类型（除了下面描述的）的类型等价性都是纯粹的*结构性的(structural)*。在结构性设定中，类型被认为是抽象语法树，其节点是类型构造器，像`u8`和`string`被认为是出现在叶子上的"零元"类型构造器，而像`list`和`record`这样的非零元类型构造器出现在父节点上。然后，类型等价性被定义为AST等价性。重要的是，这些类型AST*不*包含任何类型索引或依赖于索引空间布局；这些二进制格式的细节被解码以构成AST。例如，在以下的复合组件中：
 ```wasm
 (component $A
   (type $ListString1 (list string))
@@ -585,8 +571,7 @@ example, in the following compound component:
   )
 )
 ```
-all 5 variations of `$ListListStringX` are considered equal since, after
-decoding, they all have the same AST.
+所有 5 种变体`$ListListStringX`都被视为相等，因为解码后，它们都具有相同的AST。
 
 Next, the type equality relation on ASTs is relaxed to a more flexible
 [subtyping] relation. Currently, subtyping is only relaxed for `instance` and
