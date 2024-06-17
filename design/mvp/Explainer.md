@@ -20,14 +20,14 @@
   * [规范定义（Canonical Definitions）](#规范定义canonical-definitions)
     * [规范 ABI（Canonical ABI）](#规范-ABIcanonical-built-ins)
     * [规范内置（Canonical built-ins）](#规范内置canonical-built-ins)
-  * [Value definitions](#value-definitions)
-  * [Start definitions](#start-definitions)
-  * [Import and export definitions](#import-and-export-definitions)
-* [Component invariants](#component-invariants)
-* [JavaScript embedding](#JavaScript-embedding)
+  * [值定义（Value definitions）](#值定义value-definitions)
+  * [启动定义（Start Definitions）](#开始定义start-definitions)
+  * [导入和导出定义（Import and export definitions）](#导入和导出定义import-and-export-definitions)
+* [组件不变性（Component invariants）](#组件不变性component-invariants)
+* [JavaScript嵌入（JavaScript embedding）](#JavaScript嵌入JavaScript-embedding)
   * [JS API](#JS-API)
-  * [ESM-integration](#ESM-integration)
-* [Examples](#examples)
+  * [ESM集成（ESM-integration）](#ESM集成ESM-integration)
+* [示例（Examples）](#示例examples)
 * [TODO](#TODO)
 
 ## 特性封闭（Gated features）
@@ -770,41 +770,17 @@ defined by the following mapping:
 
 ### 规范定义（Canonical Definitions）
 
-From the perspective of Core WebAssembly running inside a component, the
-Component Model is an [embedder]. As such, the Component Model defines the
-Core WebAssembly imports passed to [`module_instantiate`] and how Core
-WebAssembly exports are called via [`func_invoke`]. This allows the Component
-Model to specify how core modules are linked together (as shown above) but it
-also allows the Component Model to arbitrarily synthesize Core WebAssembly
-functions (via [`func_alloc`]) that are imported by Core WebAssembly. These
-synthetic core functions are created via one of several *canonical definitions*
-defined below.
+从运行在组件内部的Core WebAssembly角度来看，组件模型是一个[嵌入器][embedder]。因此，组件模型定义了传递给[`module_instantiate`]的Core WebAssembly导入和通过[`func_invoke`]调用的Core WebAssembly导出。这允许组件模型指定核心模块如何链接在一起（如上所示），但它还允许组件模型任意合成由Core WebAssembly导入的Core WebAssembly函数（通过[`func_alloc`]）。这些合成的核心函数是通过下面定义的几个*规范定义(canonical definitions)*之一创建的。
 
 #### 规范 ABI（Canonical ABI）
 
-To implement or call a component-level function, we need to cross a
-shared-nothing boundary. Traditionally, this problem is solved by defining a
-serialization format. The Component Model MVP uses roughly this same approach,
-defining a linear-memory-based [ABI] called the "Canonical ABI" which
-specifies, for any `functype`, a [corresponding](CanonicalABI.md#flattening)
-`core:functype` and [rules](CanonicalABI.md#lifting-and-lowering) for copying
-values into and out of linear memory. The Component Model differs from
-traditional approaches, though, in that the ABI is configurable, allowing
-multiple different memory representations of the same abstract value. In the
-MVP, this configurability is limited to the small set of `canonopt` shown
-below. However, Post-MVP, [adapter functions] could be added to allow far more
-programmatic control.
+要实现或调用一个组件级函数，我们需要跨越一个共享无关的边界。传统上，这个问题是通过定义一个序列化格式来解决的。组件模型MVP大致上使用了这种方法，定义了一个基于线性内存的[ABI]，成为“规范ABI(Canonical ABI)”，它为任何`functype`指定了一个[相应的(corresponding)](CanonicalABI.md#flattening)`core:functype`，以及将值从线性内存中复制进/出的[规则](CanonicalABI.md#lifting-and-lowering)。然而，组件模型与传统方法不同之处在于，BAI是可配置的，允许同一个抽象值有多种不同的内存表示。在MVP中，这种可配置型仅限于下面展示的小型`canonopt`集。然而，MVP后续，可以添加[适配器函数][adapter functions]以允许更多的程序控制。
 
-The Canonical ABI is explicitly applied to "wrap" existing functions in one of
-two directions:
-* `lift` wraps a core function (of type `core:functype`) to produce a component
-  function (of type `functype`) that can be passed to other components.
-* `lower` wraps a component function (of type `functype`) to produce a core
-  function (of type `core:functype`) that can be imported and called from Core
-  WebAssembly code inside the current component.
+规范ABI明确地应用于以两个方向之一“包装”现有的函数：
+* `lift`包装一个核心函数（类型为`core:functype`），生成一个组件函数（类型为`functype`），可以传递给其他组件
+* `lower`包装一个组件函数（类型为`functype`），生成一个核心函数（类型为`core:functype`），可以从当前组件内的Core WebAssembly代码导入和调用
 
-Canonical definitions specify one of these two wrapping directions, the function
-to wrap and a list of configuration options:
+规范定义指定这两个包装方向之一、要包装的函数和配置选项列表：
 ```ebnf
 canon    ::= (canon lift core-prefix(<core:funcidx>) <canonopt>* bind-id(<externdesc>))
            | (canon lower <funcidx> <canonopt>* (core func <id>?))
@@ -815,25 +791,13 @@ canonopt ::= string-encoding=utf8
            | (realloc <core:funcidx>)
            | (post-return <core:funcidx>)
 ```
-While the production `externdesc` accepts any `sort`, the validation rules
-for `canon lift` would only allow the `func` sort. In the future, other sorts
-may be added (viz., types), hence the explicit sort.
+虽然`externdesc`接受任何`sort`，但`canon lift`的验证规则仅允许`func`类别。未来，可能会增加其他类别（即，类型），因此需要明确的类别。
 
-The `string-encoding` option specifies the encoding the Canonical ABI will use
-for the `string` type. The `latin1+utf16` encoding captures a common string
-encoding across Java, JavaScript and .NET VMs and allows a dynamic choice
-between either Latin-1 (which has a fixed 1-byte encoding, but limited Code
-Point range) or UTF-16 (which can express all Code Points, but uses either
-2 or 4 bytes per Code Point). If no `string-encoding` option is specified, the
-default is UTF-8. It is a validation error to include more than one
-`string-encoding` option.
+`string-encoding`选项指定了Canonical ABI将如何对字符串类型进行编码。`latin1+utf16`编码能适应Java，JavaScript和.NET VMs的常见字符串编码方式，并允许在Latin-1（固定1字节编码，但码位有限）或UTF-16（可以表达所有码位，但每个码位占用2或4字节）之间动态选择。如果没有指定`string-encoding`，默认为UTF-8。同时指定多个字符串编码选项会校验错误。
 
-The `(memory ...)` option specifies the memory that the Canonical ABI will
-use to load and store values. If the Canonical ABI needs to load or store,
-validation requires this option to be present (there is no default).
+`(memory ...)`选项指定了Canonical ABI将用于加载和存储值的内存。如果Canonical ABI需要加载或存储，校验需要此选项存在（无默认值）。
 
-The `(realloc ...)` option specifies a core function that is validated to
-have the following core function type:
+`(realloc ...)`选项指定了一个核心函数，该函数被校验需为下面的核心函数类型：
 ```wasm
 (func (param $originalPtr i32)
       (param $originalSize i32)
@@ -841,45 +805,24 @@ have the following core function type:
       (param $newSize i32)
       (result i32))
 ```
-The Canonical ABI will use `realloc` both to allocate (passing `0` for the
-first two parameters) and reallocate. If the Canonical ABI needs `realloc`,
-validation requires this option to be present (there is no default).
+Canonical ABI将使用`realloc`进行内存分配（allocate，第一、二个参数为`0`）以及内存重新分配(reallocate)。如果Canonical ABI需要`realloc`，那么校验需要此选项存在（无默认值）。
 
-The `(post-return ...)` option may only be present in `canon lift`
-and specifies a core function to be called with the original return values
-after they have finished being read, allowing memory to be deallocated and
-destructors called. This immediate is always optional but, if present, is
-validated to have parameters matching the callee's return type and empty
-results.
+`(post-return ...)`选项只能在`canon lift`中出现并指定一个核心函数，该函数将在读取完原始返回值后使用原始返回值进行调用，从而允许释放内存并调用析构函数。这个立即数是可选的，但是如果存在，则验证其参数是否与被调用者的返回类型匹配且结果为空。
 
-Based on this description of the AST, the [Canonical ABI explainer][Canonical
-ABI] gives a detailed walkthrough of the static and dynamic semantics of `lift`
-and `lower`.
+基于AST的描述，[规范ABI解释器(Canonical ABI explainer)][Canonical ABI]给出了`lift`和`lower`的静态和动态语义的详细解析。
 
-One high-level consequence of the dynamic semantics of `canon lift` given in
-the Canonical ABI explainer is that component functions are different from core
-functions in that all control flow transfer is explicitly reflected in their
-type. For example, with Core WebAssembly [exception-handling] and
-[stack-switching], a core function with type `(func (result i32))` can return
-an `i32`, throw, suspend or trap. In contrast, a component function with type
-`(func (result string))` may only return a `string` or trap. To express
-failure, component functions can return `result` and languages with exception
-handling can bind exceptions to the `error` case. Similarly, the forthcoming
-addition of [future and stream types] would explicitly declare patterns of
-stack-switching in component function signatures.
+规范ABI解释器中给出的`canon lift`的动态语义的一个高层级结果是，组件函数语核心函数不同，所有的控制流转移都在其类型中明确反映。
+例如，使用Core WebAssembly的[异常处理(exception-handling)][exception-handling]和[堆栈切换(stack-switching)][stack-switching]，类型为`(func (result i32))`的核心函数可以返回`i32`，抛出、暂停或捕获异常。相反，类型为`(func (result string))`的组件函数仅可能返回一个`string`或捕获异常。为了表达失败，组件函数可以返回`result`，具有异常处理的语言可以将异常绑定到`error`情况。类似的，即将添加的[future和stream类型][future and stream types]将在组件函数签名中明确声明堆栈切换的模式。
 
-Similar to the `import` and `alias` abbreviations shown above, `canon`
-definitions can also be written in an inverted form that puts the sort first:
+与上面显示的`import`和`alias`类似，`canon`定义也能以倒置形式编写，将类别放在第一位：
 ```wasm
 (func $f (import "i" "f") ...type...) ≡ (import "i" "f" (func $f ...type...))       (WebAssembly 1.0)
 (func $g ...type... (canon lift ...)) ≡ (canon lift ... (func $g ...type...))
 (core func $h (canon lower ...))      ≡ (canon lower ... (core func $h))
 ```
-Note: in the future, `canon` may be generalized to define other sorts than
-functions (such as types), hence the explicit `sort`.
+注意：未来，`canon`可能会被推广到定义函数以外的其他类别（例如类型），因此需显示的`sort`。
 
-Using canonical function definitions, we can finally write a non-trivial
-component that takes a string, does some logging, then returns a string.
+使用规范的函数定义，我们最终可以熟悉一个不平凡的组件，它接收一个字符串，进行一些记录，然后返回一个字符串。
 ```wasm
 (component
   (import "logging" (instance $logging
@@ -913,23 +856,12 @@ component that takes a string, does some logging, then returns a string.
   (export "run" (func $run))
 )
 ```
-This example shows the pattern of splitting out a reusable language runtime
-module (`$Libc`) from a component-specific, non-reusable module (`$Main`). In
-addition to reducing code size and increasing code-sharing in multi-component
-scenarios, this separation allows `$libc` to be created first, so that its
-exports are available for reference by `canon lower`. Without this separation
-(if `$Main` contained the `memory` and allocation functions), there would be a
-cyclic dependency between `canon lower` and `$Main` that would have to be
-broken using an auxiliary module performing `call_indirect`.
+此示例展示了从特定组件的不可复用模块（`$Main`）中分离出可复用的语言运行时模块（`$Libc`）。
+除了减少代码大小和增加多组件场景中的代码共享之外，这种分离方式还允许`$libc`先被创建，这样它的导出就可以被`canon lower`引用。如果没有这种分离（也就是说`$Main`包含`memory`和分配函数），那么`canon lower`和`$Main`之间就会存在循环以来关系，必须使用辅助模块执行`call_indirect`打破这种依赖循环。
 
 #### 规范内置（Canonical Built-ins）
 
-In addition to the `lift` and `lower` canonical function definitions which
-adapt *existing* functions, there are also a set of canonical "built-ins" that
-define core functions out of nothing that can be imported by core modules to
-dynamically interact with Canonical ABI entities like resources (and, when
-async is added to the proposal, [tasks][Future and Stream Types]).
-```ebnf
+除了适配*现有*函数的`lift`和`lower`的规范函数定义之外，还有一组规范“内置(built-ins)”，它们从无到有定义可以被核心模块导入的核心函数，从而与资源等规范ABI实体动态交互（以及当提案中添加了异步(async)、[任务(task)][Future and Stream Types]时）。
 canon ::= ...
         | (canon resource.new <typeidx> (core func <id>?))
         | (canon resource.drop <typeidx> (core func <id>?))
@@ -938,23 +870,15 @@ canon ::= ...
         | (canon thread.hw_concurrency (core func <id>?)) 🧵
 ```
 
-##### Resources
+##### 资源（Resources）
 
-The `resource.new` built-in has type `[i32] -> [i32]` and creates a new
-resource (with resource type `typeidx`) with the given `i32` value as its
-representation and returning the `i32` index of a new handle pointing to this
-resource.
+内置`resource.new`具有`[i32] -> [i32]`类型并创建一个新的资源（具有资源类型`typeidx`），其表示为给定的`i32`值并返回指向此资源的新句柄的`i32`索引。
 
-The `resource.drop` built-in has type `[i32] -> []` and drops a resource handle
-(with resource type `typeidx`) at the given `i32` index. If the dropped handle
-owns the resource, the resource's `dtor` is called, if present.
+内置`resource.drop`具有`[i32] -> []`类型并删除给定`i32`索引的资源句柄（具有资源类型`typeidx`）。如果删除的句柄拥有资源，那么资源如果存在`dtor`则会被调用。
 
-The `resource.rep` built-in has type `[i32] -> [i32]` and returns the `i32`
-representation of the resource (with resource type `typeidx`) pointed to by the
-handle at the given `i32` index.
+内置`resource.rep`具有`[i32] -> [i32]`类型并返回由给定`i32`索引处的句柄指向的资源（具有资源类型`typeidx`）的`i32`表示。
 
-As an example, the following component imports the `resource.new` built-in,
-allowing it to create and return new resources to its client:
+举个例子，以下组件导入了内置`resource.new`，使其能够创建并返回新资源给其客户端：
 ```wasm
 (component
   (import "Libc" (core module $Libc ...))
@@ -978,35 +902,23 @@ allowing it to create and return new resources to its client:
   )
 )
 ```
-Here, the `i32` returned by `resource.new`, which is an index into the
-component's handle-table, is immediately returned by `make_R`, thereby
-transferring ownership of the newly-created resource to the export's caller.
+这里，由`resource.new`返回的`i32`，是组件句柄表的索引，被`make_R`立即返回，从而将新创建资源的所有权转移给导出的调用者。
 
-##### 🧵 Threads
+##### 🧵 线程（Threads）
 
-The [shared-everything-threads] proposal adds component model built-ins for
-thread management. These are specified as built-ins and not core WebAssembly
-instructions because browsers expect this functionality to come from existing
-Web/JS APIs.
+提案[共享所有线程(shared-everything-threads)][shared-everything-threads]为线程管理增加了组件模型内置。这些被指定为内置而非核心WebAssembly指令的原因是浏览器希望这些功能由现有的Web/JS API提供。
 
-The `thread.spawn` built-in has type `[f:(ref null $f) c:i32] -> [i32]` and
-spawns a new thread by invoking the shared function `f` while passing `c` to it,
-returning whether a thread was successfully spawned.
+内置`thread.spawn`具有`[f:(ref null $f) c:i32] -> [i32]`类型，它通过调用共享函数`f`并向其传递`c`来生成新线程，返回值表示是否成功创建了线程。
 
-The `resource.hw_concurrency` built-in has type `[] -> [i32]` and returns the
-number of threads that can be expected to execute concurrently.
+内置`resource.hw_concurrency`具有`[] -> [i32]`类型，它返回可以并发执行的线程数量。
 
-See the [CanonicalABI.md](CanonicalABI.md#canonical-definitions) for detailed
-definitions of each of these built-ins and their interactions.
+请参阅[CanonicalABI.md](CanonicalABI.md#canonical-definitions)获取内置(built-ins)及其交互的详细定义。
 
-### 🪙 Value Definitions
+### 🪙 值定义（Value Definitions）
 
-Value definitions (in the value index space) are like immutable `global` definitions
-in Core WebAssembly except that validation requires them to be consumed exactly
-once at instantiation-time (i.e., they are [linear]).
+值定义（在值索引空间中）类似于Core WebAssembly中的不可变`global`定义，只是验证要求它们在实例化时(instantiation-time)只被使用一次（即，它们是[线性的(linear)][linear]）。
 
-Components may define values in the value index space using following syntax:
-
+组件可以使用以下语法在值索引空间中定义值：
 ```ebnf
 value    ::= (value <id>? <valtype> <val>)
 val      ::= false | true
@@ -1027,13 +939,11 @@ val      ::= false | true
 f64canon ::= <core:f64> without the `nan:0x` case.
 ```
 
-The validation rules for `value` require the `val` to match the `valtype`.
+`value`的校验规则要求`val`与`valtype`匹配。
 
-The `(binary ...)` expression form provides an alternative syntax allowing the binary contents
-of the value definition to be written directly in the text format, analogous to data segments,
-avoiding the need to understand type information when encoding or decoding.
+`(binary ...)`表达式提供了一种替代语法，允许将值定义的二进制内容直接以文本格式写入，类似于数据段(data segments)，避免在编码或解码时需要理解类型信息。
 
-For example:
+例如：
 ```wasm
 (component
   (value $a bool true)
@@ -1106,15 +1016,13 @@ For example:
 )
 ```
 
-As with all definition sorts, values may be imported and exported by
-components. As an example value import:
+与所有定义类别一样，值可以由组件导入和导出。以下是值导入的示例：
 ```wasm
 (import "env" (value $env (record (field "locale" (option string)))))
 ```
-As this example suggests, value imports can serve as generalized [environment
-variables], allowing not just `string`, but the full range of `valtype`.
+正如该示例所示，值导入可以作为通用[环境变量][environment variables]，不仅允许`string`，还允许`valtype`的全部范围。
 
-Values can also be exported.  For example:
+值也可以导出。例如：
 ```wasm
 (component
   (import "system-port" (value $port u16))
@@ -1123,7 +1031,7 @@ Values can also be exported.  For example:
   (export "default-port" (value $port))
 )
 ```
-The inferred type of this component is:
+该组件的推断类型是：
 ```wasm
 (component
   (import "system-port" (value $port u16))
@@ -1132,29 +1040,17 @@ The inferred type of this component is:
   (export "default-port" (value (eq $port)))
 )
 ```
-Thus, by default, the precise constant or import being exported is propagated
-into the component's type and thus its public interface.  In this way, value exports
-can act as semantic configuration data provided by the component to the host
-or other client tooling.
-Components can also keep the exact value being exported abstract (so that the
-precise value is not part of the type and public interface) using the "type ascription"
-feature mentioned in the [imports and exports](#import-and-export-definitions) section below.
+因此，默认情况下，导出的精确常量和导入会传递至组件类型从而成为公共接口。这样，值导出可以作为组件提供给主机或其他客户端工具的语义配置数据。组件可以使用后续[导入和导出](#import-and-export-definitions)提到的“类型归属(type ascription)”功能将导出的精确值保持为抽象（以便精确值不帅说类型和公共接口）。
 
-### 🪙 Start Definitions
+### 🪙 启动定义（Start Definitions）
 
-Like modules, components can have start functions that are called during
-instantiation. Unlike modules, components can call start functions at multiple
-points during instantiation with each such call having parameters and results.
-Thus, `start` definitions in components look like function calls:
+与模块一样，组件可以有在实例化期间调用的启动函数。与模块不同，组件可以在实例化期间的多个点调用启动函数，每个此类调用都有参数和结果。因此，组件中的`start`定义类似于函数调用：
 ```ebnf
 start ::= (start <funcidx> (value <valueidx>)* (result (value <id>?))*)
 ```
-The `(value <valueidx>)*` list specifies the arguments passed to `funcidx` by
-indexing into the *value index space*. The arity and types of the two value lists are
-validated to match the signature of `funcidx`.
+`(value <valueidx>)*`列表通过索引到*值索引空间(value index space)*来指定传递给`funcidx`的参数。两个值列表的参数数量和类型都经过校验匹配`funcidx`的签名。
 
-With this, we can define a component that imports a string and computes a new
-exported string at instantiation time:
+通过这个，我们可以定义一个组件，在实例化时导入一个字符串并计算一个新的导出的字符串：
 ```wasm
 (component
   (import "name" (value $name string))
@@ -1178,12 +1074,9 @@ exported string at instantiation time:
   (export "greeting" (value $greeting))
 )
 ```
-As this example shows, start functions reuse the same Canonical ABI machinery
-as normal imports and exports for getting component-level values into and out
-of core linear memory.
+如此例所示，启动函数重用了与正常导入和导出相同的规范ABI机制，将组件级值引入和导出核心线性内存。
 
-
-### Import and Export Definitions
+### 导入和导出定义（Import and Export Definitions）
 
 Both import and export definitions append a new element to the index space of
 the imported/exported `sort` which can be optionally bound to an identifier in
