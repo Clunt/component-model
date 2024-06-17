@@ -17,9 +17,9 @@
     * [定义类型（Definition types）](#定义类型definition-types)
     * [声明符（Declarators）](#声明符declarators)
     * [类型检查（Type Checking）](#类型检查type-checking)
-  * [Canonical definitions](#canonical-definitions)
-    * [Canonical ABI](#canonical-built-ins)
-    * [Canonical built-ins](#canonical-built-ins)
+  * [规范定义（Canonical Definitions）](#规范定义canonical-definitions)
+    * [规范 ABI（Canonical ABI）](#规范-ABIcanonical-built-ins)
+    * [规范内置（Canonical built-ins）](#规范内置canonical-built-ins)
   * [Value definitions](#value-definitions)
   * [Start definitions](#start-definitions)
   * [Import and export definitions](#import-and-export-definitions)
@@ -552,7 +552,7 @@ defined by the following mapping:
 
 #### 类型检查（Type Checking）
 
-类似于核心模块，组件在前期验证阶段(up-front validation phase)检查组件定义以确保基本的一致性。类型检查是验证的核心部分，例如，验证实例化（[`instantiate`](#instance-definitions)）表达式`with`参数与被实例化组件的`import`是否类型兼容时会进行类型检查。
+类似于核心模块，组件在前期验证阶段会检查组件定义确保基本的一致性。类型检查是验证的核心部分，例如，验证实例化（[`instantiate`](#instance-definitions)）表达式`with`参数与被实例化组件的`import`是否类型兼容时会进行类型检查。
 
 为了逐步描述类型检查是如何工作的，我们将从非资源、非句柄、本地类型定义的*类型等价性*开始并逐步加强。
 
@@ -573,17 +573,9 @@ defined by the following mapping:
 ```
 所有 5 种变体`$ListListStringX`都被视为相等，因为解码后，它们都具有相同的AST。
 
-Next, the type equality relation on ASTs is relaxed to a more flexible
-[subtyping] relation. Currently, subtyping is only relaxed for `instance` and
-`component` types, but may be relaxed for more type constructors in the future
-to better support API Evolution (being careful to understand how subtyping
-manifests itself in the wide variety of source languages so that
-subtype-compatible updates don't inadvertantly break source-level clients).
+接下来，AST的类型等价关系被放宽为更灵活的[子类型][subtyping]关系。当前，仅有`instance`和`component`类型的子类型被放宽，但将来可能会为更多的类型构造器放宽子类关系，以便更好地支持API演进(API Evolution)（注意理解子类型在各种源语言中如何表现，以便子类型兼容的更新不会无意中破坏源级客户端）。
 
-Component and instance subtyping allows a subtype to export more and import
-less than is declared by the supertype, ignoring the exact order of imports and
-exports and considering only names. For example, here, `$I1` is a subtype of
-`$I2`:
+组件和实例子类型允许子类型导出比超类型(supertype)声明的更多内容并导入更少内容，忽略导入和导出的确切顺序，仅考虑名称。例如下方，`$I1`是`$I2`的子类型：
 ```wat
 (component
   (type $I1 (instance
@@ -597,7 +589,7 @@ exports and considering only names. For example, here, `$I1` is a subtype of
   ))
 )
 ```
-and `$C1` is a subtype of `$C2`:
+并且`$C1`是`$C2`的子类型：
 ```wat
 (component
   (type $C1 (component
@@ -613,12 +605,9 @@ and `$C1` is a subtype of `$C2`:
 )
 ```
 
-When we next consider type imports and exports, there are two distinct
-subcases of `typebound` to consider: `eq` and `sub`.
+当我们接下来考虑导入和导出类型时，`typebound`有两个不同的子情况需要考虑：`eq`和`sub`。
 
-The `eq` bound adds a type equality rule (extending the built-in set of
-subtyping rules mentioned above) saying that the imported type is structurally
-equivalent to the type referenced in the bound. For example, in the component:
+`eq`绑定增加了类型相等规则（扩展上面提到的内置子类型规则集），表示导入类型在结构上等同与边界中引用的类型。例如，在组件中：
 ```wasm
 (component
   (type $L1 (list u8))
@@ -627,28 +616,19 @@ equivalent to the type referenced in the bound. For example, in the component:
   (import "L4" (type $L2 (eq $L3)))
 )
 ```
-all four `$L*` types are equal (in subtyping terms, they are all subtypes of
-each other).
+所有4种`$L*`类型都相等（从子类型的角度看，它们均是彼此的子类型）。
 
-In contrast, the `sub` bound introduces a new *abstract* type which the rest of
-the component must conservatively assume can be *any* type that is a subtype of
-the bound. What this means for type-checking is that each subtype-bound type
-import/export introduces a *fresh* abstract type that is unequal to every
-preceding type definition. Currently (and likely in the MVP), the only
-supported type bound is `resource` (which means "any resource type") and thus
-the only abstract types are abstract *resource* types. As an example, in the
-following component:
+相反，`sub`绑定引入一种新的*抽象*类型，组件的其余部分必须谨慎的假设该抽象类型可以是绑定的子类型的*任何*类型。这对于类型检查而言，每个子类型绑定的类型导入/导出都会引入一种*新*的类型抽象，该抽象类型与每个先前的类型定义都不相等。
+目前（且可能在MVP中），仅有`resource`支持类型绑定（这意味着“任何资源类型”），因此唯一的抽象类型是抽象`resource`类型。例如，在下面的组件中：
 ```wasm
 (component
   (import "T1" (type $T1 (sub resource)))
   (import "T2" (type $T2 (sub resource)))
 )
 ```
-the types `$T1` and `$T2` are not equal.
+`$T1`和`$T2`类型不相等。
 
-Once a type is imported, it can be referred to by subsequent equality-bound
-type imports, thereby adding more types that it is equal to. For example, in
-the following component:
+一旦导入了类型，它就可以被后续的等价绑定类型导入引用，从而添加更多它等价的类型。例如，下方组件：
 ```wasm
 (component $C
   (import "T1" (type $T1 (sub resource)))
@@ -659,13 +639,9 @@ the following component:
   (type $ListT3 (list (own $T3)))
 )
 ```
-the types `$T2` and `$T3` are equal to each other but not to `$T1`. By the
-above transitive structural equality rules, the types `$List2` and `$List3` are
-equal to each other but not to `$List1`.
+`$T2`和`$T3`类型彼此相等但不等于`$T1`。根据上述传递结构相等规则，`$List2`和`$List3`彼此相等但不等于`$List1`。
 
-Handle types (`own` and `borrow`) are structural types (like `list`) but, since
-they refer to resource types, transitively "inherit" the freshness of abstract
-resource types. For example, in the following component:
+句柄类型（`own`和`borrow`）是结构化类型（类似于`list`），但它们引用资源类型，因此可以传递性地“继承(inherit)”抽象资源类型的新鲜度(freshness)。例如，下方组件：
 ```wasm
 (component
   (import "T" (type $T (sub resource)))
@@ -684,16 +660,9 @@ resource types. For example, in the following component:
   (type $ListBorrow3 (list $Borrow3))
 )
 ```
-the types `$Own1` and `$Own2` are equal to each other but not to `$Own3` or
-any of the `$Borrow*`.  Similarly, `$Borrow1` and `$Borrow2` are equal to
-each other but not `$Borrow3`. Transitively, the types `$ListOwn1` and
-`$ListOwn2` are equal to each other but not `$ListOwn3` or any of the
-`$ListBorrow*`. These type-checking rules for type imports mirror the
-*introduction* rule of [universal types]  (∀T).
+`$Own1`和`$Own2`类型彼此相等但不等于`$Own3`或任何`$Borrow*`。相同的，`$Borrow1`和`$Borrow2`彼此相等但不等于`$Borrow3`。传递性地，`$ListOwn1`和`$ListOwn2`类型彼此相等但不等于`$ListOwn3`或任何`$ListBorrow*`。类型导入的类型检查规则反映了[通用类型(universal types)(∀T)][universal types]的*引入*规则。
 
-The above examples all show abstract types in terms of *imports*, but the same
-"freshness" condition applies when aliasing the *exports* of another component
-as well. For example, in this component:
+上述示例均展示了*导入*方面的抽象类型，但当为另一个组件设置*导出*别名时，同样的“新鲜度(freshness)”条件也适用。例如，下方组件：
 ```wasm
 (component
   (import "C" (component $C
@@ -707,21 +676,11 @@ as well. For example, in this component:
   (alias export $c "T3" (type $T3))
 )
 ```
-the types `$T2` and `$T3` are equal to each other but not to `$T1`. These
-type-checking rules for aliases of type exports mirror the *elimination* rule
-of [existential types]  (∃T).
+`$T2`和`$T3`类型彼此相等单不等于`$T1`。这些针对类型导出别名的类型检查规则反映了[存在类型(existential types)(∃T)][existential types]的*消除*规则。
 
-Next, we consider resource type *definitions* which are a *third* source of
-abstract types. Unlike the abstract types introduced by type imports and
-exports, resource type definitions provide canonical built-ins for setting and
-getting a resource's private representation value (that are introduced
-[below](#canonical-built-ins)). These built-ins are necessarily scoped to the
-component instance that generated the resource type, thereby hiding access to a
-resource type's representation from the outside world. Because each component
-instantiation generates fresh resource types distinct from all preceding
-instances of the same component, resource types are ["generative"].
+接下来，我们讨论抽象类型的第三个来源是资源类型*定义*。不同于导入和导出引入的抽象类型，资源类型定义为设置和获取资源的私有表示值（将在[下面](#canonical-built-ins)介绍）提供了规范的内置功能。这些内建功能必然被限制在生成资源类型的组件实例中，从而隐藏了对资源类型表示的外部访问。因为每个组件实例都生成了与同一组件的所有先前实例不同的新资源类型，所以资源类型是["生成性的(generative)"]["Generative"]。
 
-For example, in the following example component:
+例如，在下方示例组件中：
 ```wasm
 (component
   (type $R1 (resource (rep i32)))
@@ -730,12 +689,9 @@ For example, in the following example component:
   (func $f2 (param (own $R2)) (canon lift ...))
 )
 ```
-the types `$R1` and `$R2` are unequal and thus the return type of `$f1`
-is incompatible with the parameter type of `$f2`.
+`$R1`和`$R2`类型不相等，因此返回类型`$f1`与参数类型`$f2`不兼容。
 
-The generativity of resource type definitions matches the abstract typing rules
-of type exports mentioned above, which force all clients of the component to
-bind a fresh abstract type. For example, in the following component:
+资源类型定义的生成性与上面提到的类型导出的抽象类型规则相匹配，该规则强制组件的所有客户端绑定一个新的抽象类型。例如，在下方组件中：
 ```wasm
 (component
   (component $C
@@ -750,12 +706,9 @@ bind a fresh abstract type. For example, in the following component:
   (type $c2r2 (alias export $c2 "r2"))
 )
 ```
-all four types aliases in the outer component are unequal, reflecting the fact
-that each instance of `$C` generates two fresh resource types.
+外部组件中的所有4种类型别名都不相等，反映出每个`$C`的实例生成两种新的资源类型的事实。
 
-If a single resource type definition is exported more than once, the exports
-after the first are equality-bound to the first export. For example, the
-following component:
+如果一个资源类型定义被导出多次，那么第一次之后的导出将等价绑定到第一次导出。例如，以下组件：
 ```wasm
 (component
   (type $r (resource (rep i32)))
@@ -763,21 +716,16 @@ following component:
   (export "r2" (type $r))
 )
 ```
-is assigned the following `componenttype`:
+被分配了下面的`componenttype`：
 ```wasm
 (component
   (export "r1" (type $r1 (sub resource)))
   (export "r2" (type (eq $r1)))
 )
 ```
-Thus, from an external perspective, `r1` and `r2` are two labels for the same
-type.
+因此，从外部角度来看，`r1`和`r2`是同一类型的两个标签。
 
-If a component wants to hide this fact and force clients to assume `r1` and
-`r2` are distinct types (thereby allowing the implementation to actually use
-separate types in the future without breaking clients), an explicit type can be
-ascribed to the export that replaces the `eq` bound with a less-precise `sub`
-bound (using syntax introduced [below](#import-and-export-definitions)).
+如果一个组件想要避免这个实现并强制客户端假设`r1`和`r2`为不同类型（从而允许实现在未来实际使用不同的类型而不破坏客户端），可以为导出指定明确的次严格的`sub`绑定替换`eq`绑定类型（使用[下方](#import-and-export-definitions)介绍的语法）。
 ```wasm
 (component
   (type $r (resource (rep i32)))
@@ -785,20 +733,16 @@ bound (using syntax introduced [below](#import-and-export-definitions)).
   (export "r2" (type $r) (type (sub resource)))
 )
 ```
-This component is assigned the following `componenttype`:
+该组件分配如下`componenttype`：
 ```wasm
 (component
   (export "r1" (type (sub resource)))
   (export "r2" (type (sub resource)))
 )
 ```
-The assignment of this type to the above component mirrors the *introduction*
-rule of [existential types]  (∃T).
+该类型对上述组件的分配反映了[存在类型(existential types)(∃T)][existential types]的*引入*规则。
 
-When supplying a resource type (imported *or* defined) to a type import via
-`instantiate`, type checking performs a substitution, replacing all uses of the
-`import` in the instantiated component with the actual type supplied via
-`with`. For example, the following component validates:
+当通过`instantiate`为导入类型提供资源类型（导入*或*定义）时，类型检查会指向替换，将实例化组件中的所有使用`import`通过`with`替换为实际类型。例如，下方组件验证：
 ```wasm
 (component $P
   (import "C1" (component $C1
@@ -815,37 +759,16 @@ When supplying a resource type (imported *or* defined) to a type import via
   (instance $c2 (instantiate $C2 (with "T" (type $R)) (with "foo" (func $foo))))
 )
 ```
-This depends critically on the `T` imports of `$C1` and `$C2` having been
-replaced by `$R` when validating the instantiations of `$c1` and `$c2`. These
-type-checking rules for instantiating type imports mirror the *elimination*
-rule of [universal types]  (∀T).
+这主要取决于在验证`$c1`和`$c2`的实例化时，`$C1`和`$C2`是否已被替换。这些用于实例化类型导入的类型检查规则反映了[通用类型(∀T)][universal types]的*消除*规则。
 
-Importantly, this type substitution performed by the parent is not visible to
-the child at validation- or run-time. In particular, there are no runtime
-casts that can "see through" to the original type parameter, avoiding
-avoiding the usual [type-exposure problems with dynamic casts][non-parametric parametricity].
+重要的是，这种由父级进行的类型替换在验证或运行时对子级不可见。特别是，没有运行时强制转换可以“看透”原始类型参数，从而避免了常见的[动态强制转换类型暴露问题(type-exposure problems with dynamic casts)][non-parametric parametricity]。
 
-In summary: all type constructors are *structural* with the exception of
-`resource`, which is *abstract* and *generative*. Type imports and exports that
-have a subtype bound also introduce abstract types and follow the standard
-introduction and elimination rules of universal and existential types.
+总结：所有类型构造器都是*结构化(structural)*的，除了`resource`，他是`抽象(abstract)`和`生成性(generative)`的。具有子类型绑定的类型导入和导出也引入了抽象类型，并遵循通用和存在类型的标准引入和消除规则。
 
-Lastly, since "nominal" is often taken to mean "the opposite of structural", a
-valid question is whether any of the above is "nominal typing". Inside a
-component, resource types act "nominally": each resource type definition
-produces a new local "name" for a resource type that is distinct from all
-preceding resource types. The interesting case is when resource type equality
-is considered from *outside* the component, particularly when a single
-component is instantiated multiple times. In this case, a single resource type
-definition that is exported with a single `exportname` will get a fresh type
-with each component instance, with the abstract typing rules mentioned above
-ensuring that each of the component's instance's resource types are kept
-distinct. Thus, in a sense, the generativity of resource types *generalizes*
-traditional name-based nominal typing, providing a finer granularity of
-isolation than otherwise achievable with a shared global namespace.
+最后，由于“名义上的(nominal)”通常被认为是“结构性的对立面(the opposite of structural)”，因此一个有效的问题是上述任何一种类型是否是“名义类型(nominal typing)”。在组件内部，资源类型表现为“名义上地”：每个资源类型定义为资源类型提供了不同于所有先前定义的资源类型的新的本地“名称”。有趣的情况是当从组件*外部*考虑资源类型等价性，，特别是当单个组件被多次实例化时。在这种情况下，使用单一`exportname`导出的单一资源类型定义将在每个组件实例都会得到一个新的类型，上面提到的抽象类型规则确保组件实例的每个资源类型保持不同。因此，从某种意义上说，资源类型的生成性*概括了*传统的基于名称的名义类型，提供了比共享全局命名空间可以实现的更细粒度的隔离。
 
 
-### Canonical Definitions
+### 规范定义（Canonical Definitions）
 
 From the perspective of Core WebAssembly running inside a component, the
 Component Model is an [embedder]. As such, the Component Model defines the
@@ -857,7 +780,7 @@ functions (via [`func_alloc`]) that are imported by Core WebAssembly. These
 synthetic core functions are created via one of several *canonical definitions*
 defined below.
 
-#### Canonical ABI
+#### 规范 ABI（Canonical ABI）
 
 To implement or call a component-level function, we need to cross a
 shared-nothing boundary. Traditionally, this problem is solved by defining a
@@ -999,7 +922,7 @@ exports are available for reference by `canon lower`. Without this separation
 cyclic dependency between `canon lower` and `$Main` that would have to be
 broken using an auxiliary module performing `call_indirect`.
 
-#### Canonical Built-ins
+#### 规范内置（Canonical Built-ins）
 
 In addition to the `lift` and `lower` canonical function definitions which
 adapt *existing* functions, there are also a set of canonical "built-ins" that
