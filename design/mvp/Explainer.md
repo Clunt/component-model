@@ -1078,28 +1078,13 @@ start ::= (start <funcidx> (value <valueidx>)* (result (value <id>?))*)
 
 ### 导入和导出定义（Import and Export Definitions）
 
-Both import and export definitions append a new element to the index space of
-the imported/exported `sort` which can be optionally bound to an identifier in
-the text format. In the case of imports, the identifier is bound just like Core
-WebAssembly, as part of the `externdesc` (e.g., `(import "x" (func $x))` binds
-the identifier `$x`). In the case of exports, the `<id>?` right after the
-`export` is bound while the `<id>` inside the `<sortidx>` is a reference to the
-preceding definition being exported (e.g., `(export $x "x" (func $f))` binds a
-new identifier `$x`).
+导入和导出定义都会将新元素附加到导入/导出`sort`的索引空间，该元素在文本格式中可以选择绑定一个标识符。对于导入，标识符的绑定类似于Core WebAssembly，作为`externdesc`的一部分（例如，`(import "x" (func $x))`绑定标识符`$x`）。
+对于导出，紧接着`export`后面的`<id>?`会被绑定，而`<sortidx>`中的`<id>`则是对正在被导出的先前定义的引用（例如，`(export $x "x" (func $f))`绑定新的标识符`$x`）。
 ```ebnf
 import ::= (import "<importname>" bind-id(<externdesc>))
 export ::= (export <id>? "<exportname>" <sortidx> <externdesc>?)
 ```
-All import names are required to be unique and all export names are required to
-be unique. The rest of the grammar for imports and exports defines a structured
-syntax for the contents of import and export names. Syntactically, these names
-appear inside quoted string literals. The grammar thus restricts the contents
-of these string literals to provide more structured information that can be
-mechanically interpreted by toolchains and runtimes to support idiomatic
-developer workflows and source-language bindings. The rules defining this
-structured name syntax below are to be interpreted as a *lexical* grammar
-defining a single token and thus whitespace is not automatically inserted, all
-terminals are single-quoted, and everything unquoted is a meta-character.
+所有的导入名称都必须是唯一的，所有的导出名称也必须是唯一的。导入和导出的其余语法定义了导入和导出名称内容的结构化语法。在语法上，这些名称出现在带引号的字符串字面量中。因此，语法限制了这些字符串字面量的内容，以提供更多的结构化信息，这些信息可以被工具链和运行时机械地解释，以支持习惯用的开发者工作流程和源语言绑定。下面定义此结构化名称语法的规则将被解释为定义单个标记的词法语法，因此不会自动插入空格，所有终端都用单引号引起来，并且所有未加引号的内容都是元字符。
 ```ebnf
 exportname    ::= <plainname>
                 | <interfacename>
@@ -1140,52 +1125,22 @@ urlname       ::= 'url=<' <nonbrackets> '>' (',' <hashname>)?
 nonbrackets   ::= [^<>]*
 hashname      ::= 'integrity=<' <integrity-metadata> '>'
 ```
-Components provide six options for naming imports:
-* a **plain name** that leaves it up to the developer to "read the docs"
-  or otherwise figure out what to supply for the import;
-* an **interface name** that is assumed to uniquely identify a higher-level
-  semantic contract that the component is requesting an *unspecified* wasm
-  or native implementation of;
-* a **URL name** that the component is requesting be resolved to a *particular*
-  wasm implementation by [fetching] the URL.
-* a **hash name** containing a content-hash of the bytes of a *particular*
-  wasm implemenentation but not specifying location of the bytes.
-* a **locked dependency name** that the component is requesting be resolved via
-  some contextually-supplied registry to a *particular* wasm implementation
-  using the given hierarchical name and version; and
-* an **unlocked dependency name** that the component is requesting be resolved
-  via some contextually-supplied registry to *one of a set of possible* of wasm
-  implementations using the given hierarchical name and version range.
+组件提供了六种命名导入选项:
+* **普通名称**，让开发人员“阅读文档”或以其他方式弄清楚要提供什么来导入；
+* **接口名称**，假设它唯一地标识了组件正在请求一个*非特定的*wasm或本地实现的更高级的语义契约；
+* **URL名称**，组件请求通过[获取(fetching)][fetching]URL来解析*特定的*wasm实现；
+* **哈希名称（hash name）**，包含*特定的*wasm实现的字节的内容哈希(content-hash)，但不指定字节的位置；
+* **锁定依赖项名称（locked dependency name）**，组件请求通过一些上下文提供的注册表解析到*特定的*wasm实现，使用给定的分层名称和版本；
+* **未锁定依赖项名称（unlocked dependency name）**，组件请求通过一些上下文提供的注册表解析到*一组可能的*wasm实现*之一*，使用给定的分层名称和版本范围。
 
-Not all hosts are expected to support all six import naming options and, in
-general, build tools may need to wrap a to-be-deployed component with an outer
-component that only uses import names that are understood by the target host.
-For example:
-* an offline host may only implement a fixed set of interface names, requiring
-  a build tool to **bundle** URL, dependency and hash names (replacing the
-  imports with nested definitions);
-* browsers may only support plain and URL names (with plain names resolved via
-  import map or [JS API]), requiring the build process to publish or bundle
-  dependencies, converting dependency names into nested definitions or URL
-  names;
-* a production server environment may only allow deployment of components
-  importing from a fixed set of interface and locked dependency names, thereby
-  requiring all dependencies to be locked and deployed beforehand;
-* host embeddings without a direct developer interface (such as the JS API or
-  import maps) may reject all plain names, requiring the build process to
-  resolve these beforehand;
-* hosts without content-addressable storage may reject hash names (as they have
-  no way to locate the contents).
+并非所有主机都应支持所有六个导入命名选项，并且通常，构建工具可能需要使用外部组件包装要部署的组件，该外部组件仅使用目标主机可以理解的导入名称。例如：
+* 离线主机可能只实现一组固定的接口名称，需要构建工具来**捆绑**URL、依赖项和哈希名称（用嵌套定义替换导入）；
+* 浏览器可能仅支持纯文本和URL名称（通过导入映射或JS API解析纯文本名称），需要构建过程发布或捆绑依赖项，将依赖项名称转换为嵌套定义或URL名称；
+* 生产服务器环境可能只允许部署从一组固定的接口和锁定的依赖项名称导入的组件，从而要求事先锁定和部署所有依赖项；
+* 没有直接开发人员界面（例如 JS API 或导入映射）的主机嵌入可能会拒绝所有普通名称，需要构建过程事先解决这些问题；
+* 没有内容可寻址存储的主机可能会拒绝哈希名称（因为它们无法找到内容）。
 
-The grammar and validation of URL names allows the embedded URLs to contain any
-sequence of UTF-8 characters (other than angle brackets, which are used to
-[delimit the URL]), leaving the well-formedness of the URL to be checked as
-part of the process of [parsing] the URL in preparation for [fetching] the URL.
-The [base URL] operand passed to the URL spec's parsing algorithm is determined
-by the host and may be absent, thereby disallowing relative URLs. Thus, the
-parsing and fetching of a URL import are host-defined operations that happen
-after the decoding and validation of a component, but before instantiation of
-that component.
+URL名称的语法和验证允许嵌入的URL包函任何UTF-8字符序列（除了用于[分割URL][delimit the URL]的尖括号外），在[获取][fetching]URL的准备阶段，将URL的结构良好性作为[解析][parsing]URL过程的一部分进行检查。传递给URL规范解析算法的[基础URL][base URL]操作数由主机确定，并且可能因不存在导致不允许相对URL。因此，URL导入的解析和获取是主机定义的操作，发生在组件解码和校验之后，但在组件实例化之前。
 
 When a particular implementation is indicated via URL or dependency name,
 `importname` allows the component to additionally specify a cryptographic hash
