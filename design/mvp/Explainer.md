@@ -1084,7 +1084,7 @@ start ::= (start <funcidx> (value <valueidx>)* (result (value <id>?))*)
 import ::= (import "<importname>" bind-id(<externdesc>))
 export ::= (export <id>? "<exportname>" <sortidx> <externdesc>?)
 ```
-所有的导入名称都必须是唯一的，所有的导出名称也必须是唯一的。导入和导出的其余语法定义了导入和导出名称内容的结构化语法。在语法上，这些名称出现在带引号的字符串字面量中。因此，语法限制了这些字符串字面量的内容，以提供更多的结构化信息，这些信息可以被工具链和运行时机械地解释，以支持习惯用的开发者工作流程和源语言绑定。下面定义此结构化名称语法的规则将被解释为定义单个标记的词法语法，因此不会自动插入空格，所有终端都用单引号引起来，并且所有未加引号的内容都是元字符。
+所有的导入名称都必须是唯一的，所有的导出名称也必须是唯一的。导入和导出的其余语法定义了导入和导出名称内容的结构化语法。在语法上，这些名称出现在带引号的字符串字面量中。因此，语法限制了这些字符串字面量的内容，以提供更多的结构化信息，这些信息可以被工具链和运行时进行机翻，以支持习惯用的开发者工作流程和源语言绑定。下面定义此结构化名称语法的规则将被解释为定义单个标记的词法语法，因此不会自动插入空格，所有终端都用单引号引起来，并且所有未加引号的内容都是元字符。
 ```ebnf
 exportname    ::= <plainname>
                 | <interfacename>
@@ -1130,8 +1130,8 @@ hashname      ::= 'integrity=<' <integrity-metadata> '>'
 * **接口名称**，假设它唯一地标识了组件正在请求一个*非特定的*wasm或本地实现的更高级的语义契约；
 * **URL名称**，组件请求通过[获取(fetching)][fetching]URL来解析*特定的*wasm实现；
 * **哈希名称（hash name）**，包含*特定的*wasm实现的字节的内容哈希(content-hash)，但不指定字节的位置；
-* **锁定依赖项名称（locked dependency name）**，组件请求通过一些上下文提供的注册表解析到*特定的*wasm实现，使用给定的分层名称和版本；
-* **未锁定依赖项名称（unlocked dependency name）**，组件请求通过一些上下文提供的注册表解析到*一组可能的*wasm实现*之一*，使用给定的分层名称和版本范围。
+* **锁定依赖项名称（locked dependency name）**，组件请求通过一些上下文提供的注册表(registry)解析到*特定的*wasm实现，使用给定的分层名称和版本；
+* **未锁定依赖项名称（unlocked dependency name）**，组件请求通过一些上下文提供的注册表(registry)解析到*一组可能的*wasm实现*之一*，使用给定的分层名称和版本范围。
 
 并非所有主机都应支持所有六个导入命名选项，并且通常，构建工具可能需要使用外部组件包装要部署的组件，该外部组件仅使用目标主机可以理解的导入名称。例如：
 * 离线主机可能只实现一组固定的接口名称，需要构建工具来**捆绑**URL、依赖项和哈希名称（用嵌套定义替换导入）；
@@ -1142,80 +1142,27 @@ hashname      ::= 'integrity=<' <integrity-metadata> '>'
 
 URL名称的语法和验证允许嵌入的URL包函任何UTF-8字符序列（除了用于[分割URL][delimit the URL]的尖括号外），在[获取][fetching]URL的准备阶段，将URL的结构良好性作为[解析][parsing]URL过程的一部分进行检查。传递给URL规范解析算法的[基础URL][base URL]操作数由主机确定，并且可能因不存在导致不允许相对URL。因此，URL导入的解析和获取是主机定义的操作，发生在组件解码和校验之后，但在组件实例化之前。
 
-When a particular implementation is indicated via URL or dependency name,
-`importname` allows the component to additionally specify a cryptographic hash
-of the expected binary representation of the wasm implementation, reusing the
-[`integrity-metadata`] production defined by the W3C Subresource Integrity
-specification. When this hash is present, a component can express its intention
-to reuse another component or core module with the same degree of specificity
-as if the component or core module was nested directly, thereby allowing
-components to factor out common dependencies without compromising runtime
-behavior. When *only* the hash is present (in a `hashname`), the host must
-locate the contents using the hash (e.g., using an [OCI Registry]).
+当通过URL或依赖项名称表示特定实现时，`importname`允许组件额外指定wasm实现的预期二进制表示的加密哈希，复用W3C子资源完整性规范(W3C Subresource Integrity specification)定义的[完整性元数据`(integrity-metadata)`][`integrity-metadata`]项目。当存在哈希时，组件可以表达复用另一个组件或核心模块的意图，其特异性成都与直接嵌套组件或核心模块相同，从而允许组件在不影响运行时行为的情况下分解出公共依赖项。当*仅*存在哈希（在`hashname`中）时，主机必须使用哈希（例如，使用[OCI注册表][OCI Registry]）定位内容。
 
-The "registry" referred to by dependency names serves to map a hierarchical
-name and version to a particular module, component or exported definition. For
-example, in the full generality of nested namespaces and packages (🪺), in a
-registry name `a:b:c/d/e/f`, `a:b:c` traverses a path through namespaces `a`
-and `b` to a component `c` and `/d/e/f` traverses the exports of `c` (where `d`
-and `e` must be component exports but `f` can be anything). Given this abstract
-definition, a number of concrete data sources can be interpreted by developer
-tooling as "registries":
-* a live registry (perhaps accessed via [`warg`])
-* a local filesystem directory (perhaps containing vendored dependencies)
-* a fixed set of host-provided functionality (see also the [built-in modules] proposal)
-* a programmatically-created tree data structure (such as the `importObject`
-  parameter of [`WebAssembly.instantiate()`])
+依赖项名称所指向的“注册表(registry)”用于将分层名称和版本映射到特定的模块、组件或导出定义。例如，在嵌套命名空间和包(🪺)的完整通用性中，在注册表名称`a:b:c/d/e/f`中，`a:b:c`通过命名空间`a`和`b`的路径遍历到组件`c`，`/d/e/f`遍历`c`的导出（其中`d`和`e`必须是组件导出，但`f`可以是任意导出）。基于这个抽象定义，开发者工具可以将一些具体的数据源解析为“注册表”。
+* 实时注册表（可能通过[`warg`]访问）
+* 本地文件系统目录（可能包含内置依赖）
+* 固定的主机提供的功能（另请参阅[内置模块(built-in modules)][built-in modules]提案）
+* 以编程方式创建的树形数据结构（例如[`WebAssembly.instantiate()`]的参数`importObject`）
 
-The `valid semver` production is as defined by the [Semantic Versioning 2.0]
-spec and is meant to be interpreted according to that specification. The
-`verrange` production embeds a minimal subset of the syntax for version ranges
-found in common package managers like `npm` and `cargo` and is meant to be
-interpreted with the same [semantics][SemVerRange]. (Mostly this
-interpretation is the usual SemVer-spec-defined ordering, but note the
-particular behavior of pre-release tags.)
+`合法语义版本(valid semver)`项由[Semantic Versioning 2.0]规范定义并根据该规范进行解释。`verrange`项嵌入了常见包管理器（如`npm`和`cargo`）中版本范围语法的最小子集，并应按相同的[语义][SemVerRange]进行解释。（大多数情况下解释按通常的SemVer规范定义的顺序，但请注意预发布标签的特定行为。）
 
-The `plainname` production captures several language-neutral syntactic hints
-that allow bindings generators to produce more idiomatic bindings in their
-target language. At the top-level, a `plainname` allows functions to be
-annotated as being a constructor, method or static function of a preceding
-resource. In each of these cases, the first `label` is the name of the resource
-and the second `label` is the logical field name of the function. This
-additional nesting information allows bindings generators to insert the
-function into the nested scope of a class, abstract data type, object,
-namespace, package, module or whatever resources get bound to. For example, a
-function named `[method]C.foo` could be bound in C++ to a member function `foo`
-in a class `C`. The JS API [below](#JS-API) describes how the native JavaScript
-bindings could look. Validation described in [Binary.md](Binary.md) inspects
-the contents of `plainname` and ensures that the function has a compatible
-signature.
+`plainname`项记录了几种语言无关的语法提示，允许绑定生成器在目标语言中生成更符合习惯的绑定。在顶层，`plainname`允许使用前置资源将函数注解为构造器(constructor)、方法(method)或静态(static)函数，在这些情况下，第一个`label`是资源名称，第二个`label`是函数的逻辑字段名。这些额外的嵌套信息允许绑定生成器将函数插入到类(class)、抽象数据类型(abstract data type)、对象(object)、命名空间(namespace)、包(package)、模块(module)等任何被绑定的资源的嵌套范围中。例如，名为`[method]C.foo`的函数可以在C++中绑定到类`C`的成员函数`foo`。[下面](#JS-API)的JS API描述了原生JavaScript绑定会是什么样的。[Binary.md](Binary.md)中描述的校验检查`plainname`的内容并确保函数具有兼容的签名。
 
-The `label` production used inside `plainname` as well as the labels of
-`record` and `variant` types are required to have [kebab case]. The reason for
-this particular form of casing is to unambiguously separate words and acronyms
-(represented as all-caps words) so that source language bindings can convert a
-`label` into the idiomatic casing of that language. (Indeed, because hyphens
-are often invalid in identifiers, kebab case practically forces language
-bindings to make such a conversion.) For example, the `label` `is-XML` could be
-mapped to `isXML`, `IsXml`, `is_XML` or `is_xml`, depending on the target
-language/convention. The highly-restricted character set ensures that
-capitalization is trivial and does not require consulting Unicode tables.
+`plainname`中使用的`label`项以及`record`和`variant`类型的`label`都需要使用[烤串命名法(kebab case)][kebab case]。这种特定形式的大小写用于明确分隔单词和首字母缩写词（表示为全大写的单词），这样源语言绑定就可以将`label`转换为该语言的惯用的大小写。（实际上，由于连字符通常为无效标识符，烤串命名法实际上强制语言绑定进行此类转换。）例如，`标签(label)``is-XML`可以映射为`isXML`、`IsXml`、`is_XML`或`is_xml`，取决于目标语言/约定。高度限制的字符集确保大写是不重要的且无需查阅Unicode表。
 
-Because some casing schemes (such as all-lowercase) would lead to clashes if
-two `label`s differed only in case, in all cases where "uniquness" is required
-between a set of names (viz., import/export names, record field labels, variant
-case labels, and function parameter/result names), two `label`s that differ
-only in case are considered equal and thus rejected.
+由于一些大小写方案（如全部小写）会导致两个仅有大小写差异的`label`产生冲突，因此在所有需要名称之间“唯一性”的情况下（即，import/export的name、record field的label、variant case的label、以及function parameter/result的name），两个仅有大小写差异的`label`会因被视为相等而拒绝。
 
-Components provide two options for naming exports, symmetric to the first two
-options for naming imports:
-* a **plain name** that leaves it up to the developer to "read the docs"
-  or otherwise figure out what the export does and how to use it; and
-* an **interface name** that is assumed to uniquely identify a higher-level
-  semantic contract that the component is claiming to implement with the
-  given exported definition.
+组件提供了两种命名导出的选项，与前两种命名导入的选项对称：
+* **普通名称**，让开发人员“阅读文档”或以其他方式弄清楚导出的作用以及如何使用它；
+* **接口名称**，该名称被认为唯一地标识了组件声称使用给定的导出定义来实现的更高级别的语义契约。
 
-As an example, the following component uses all 9 cases of imports and exports:
+例如，下方组件使用了所有9种导入和导出案例：
 ```wasm
 (component
   (import "custom-hook" (func (param string) (result string)))
@@ -1234,30 +1181,13 @@ As an example, the following component uses all 9 cases of imports and exports:
   (export "get-JSON" (func $get_json_impl))
 )
 ```
-Here, `custom-hook` and `get-JSON` are plain names for functions whose semantic
-contract is particular to this component and not defined elsewhere. In
-contrast, `wasi:http/handler` is the name of a separately-defined interface,
-allowing the component to request the ability to make outgoing HTTP requests
-(through imports) and receive incoming HTTP requests (through exports) in a way
-that can be mechanically interpreted by hosts and tooling.
+此处，`custom-hook`和`get-JSON`函数的普通名称，其语义约定仅在此组件指定且未在其他地方定义。相反，`wasi:http/handler`是单独定义的借口名称，允许组件使用具有进行外发HTTP请求（通过导入）和接收传入HTTP请求的能力，这种方式可以由主机和工具进行机翻。
 
-The remaining 4 imports show the different ways that a component can import
-external implementations. Here, the URL and locked dependency imports use
-`component` types, allowing this component to privately create and wire up
-instances using `instance` definitions. In contrast, the unlocked dependency
-import uses an `instance` type, anticipating a subsequent tooling step (likely
-the one that performs dependency resolution) to select, instantiate and provide
-the instance.
+剩下的4个导入展示了组件可以导入外部实现的不同方式。这里，URL和锁定依赖项导入使用`component`类型，允许组件使用`instance`定义私有创建并链接实例。相反的，未锁定依赖项导入使用使用`instance`类型，预期后续工具步骤（可能是执行依赖解析的步骤）来选择、实例化及提供实例。
 
-Validation of `export` requires that all transitive uses of resource types in
-the types of exported functions or values refer to resources that were either
-imported or exported (concretely, via the type index introduced by an `import`
-or `export`). The optional `<externdesc>?` in `export` can be used to
-explicitly ascribe a type to an export which is validated to be a supertype of
-the definition's type, thereby allowing a private (non-exported) type
-definition to be replaced with a public (exported) type definition.
+`export`校验要求在导出函数或值类型中资源类型的所有传递使用，全部引用导入或导出的资源（具体来说，通过`import`或`export`引入的类型索引）。`export`中的可选项`<externdesc>?`能显示地赋予导出一个已校验为定义类型的父类型，从而允许私有（未导出）类型定义被替换为公共（已导出）类型定义。
 
-For example, in the following component:
+例如，在以下组件中：
 ```wasm
 (component
   (import "R1" (type $R1 (sub resource)))
@@ -1272,16 +1202,11 @@ For example, in the following component:
   (export "f2" (func $f2'))
 )
 ```
-the commented-out `export` is invalid because its type transitively refers to
-`$R2`, which is a private type definition. This requirement is meant to address
-the standard [avoidance problem] that appears in module systems with abstract
-types. In particular, it ensures that a client of a component is able to
-externally define a type compatible with the exports of the component.
+注释的`export`是无效的，因为其类型传递引用了`$R2`，这是一个私有类型。此要求为了解决在具有抽象类型模块系统中出现的标准[规避问题(avoidance problem)][avoidance problem]。特别是，她确保组件的客户端能够在外部定义于组件导出兼容的类型。
 
-Similar to type exports, value exports may also ascribe a type to keep the precise
-value from becoming part of the type and public interface.
+与类型导出类似，值导出也可以分配一个类型以防止精确值成为类型和公共接口的一部分。
 
-For example:
+例如：
 ```wasm
 (component
   (value $url string "https://example.com")
@@ -1289,7 +1214,7 @@ For example:
 )
 ```
 
-The inferred type of this component is:
+该组件的推断类型是：
 ```wasm
 (component
   (export "default-url" (value string))
@@ -1297,17 +1222,11 @@ The inferred type of this component is:
 ```
 
 Note, that the `url` value definition is absent from the component type
+请注意，组件类型中没有`url`值定义
 
-## Component Invariants
+## 组件不变性（Component invariants）
 
-As a consequence of the shared-nothing design described above, all calls into
-or out of a component instance necessarily transit through a component function
-definition. Thus, component functions form a "membrane" around the collection
-of core module instances contained by a component instance, allowing the
-Component Model to establish invariants that increase optimizability and
-composability in ways not otherwise possible in the shared-everything setting
-of Core WebAssembly. The Component Model proposes establishing the following
-three runtime invariants:
+基于上述无共享设计的结果，所有进或出组件实例的调用必须通过组件函数定义实现。因此，组件函数在组件实例包含的核心模块实例周围形成一个“膜(membrane)”，允许组件模型建立不变量，以在Core WebAssembly的全共享设置中无法实现的方式提高可优化性和组合性。组件模型体验建立以下三个运行时不变式：
 1. Components define a "lockdown" state that prevents continued execution
    after a trap. This both prevents continued execution with corrupt state and
    also allows more-aggressive compiler optimizations (e.g., store reordering).
