@@ -669,18 +669,14 @@ parse-XML-document: func(s: string) -> XML;
 
 [kebab-case]: https://en.wikipedia.org/wiki/Letter_case#Kebab_case
 
-# Lexical structure
+# 词汇结构（Lexical structure）
 [lexical-structure]: #lexical-structure
 
-The `wit` format is a curly-braced-based format where whitespace is optional (but
-recommended). A `wit` document is parsed as a unicode string, and when stored in
-a file is expected to be encoded as utf-8.
+`wit`格式是基于花括号的格式，其中空白是可选的（但建议使用）。`wit`文档被解析为unicode字符串，且当被存储在文件中时，预期会被编码为utf-8。
 
-Additionally, wit files must not contain any bidirectional override scalar
-values, control codes other than newline, carriage return, and horizontal tab,
-or codepoints that Unicode officially deprecates or strongly discourages.
+此外，wit文件必须不包含任何双向覆盖标量值，除换行符、回车符和水平制表符之外的控制代码或Unicode官方弃用或强烈不推荐的代码点。
 
-The current structure of tokens are:
+目前的标记结构如下：
 
 ```ebnf
 token ::= whitespace
@@ -690,45 +686,36 @@ token ::= whitespace
         | identifier
 ```
 
-Whitespace and comments are ignored when parsing structures defined elsewhere
-here.
+解析此处其他地方定义的结构时，空格和注释将被忽略。
 
-### Whitespace
+### 空白（Whitespace）
 
-A `whitespace` token in `wit` is a space, a newline, a carriage return, a
-tab character, or a comment:
+`wit`中的`whitespace`标记可以是空格、换行符、回车符、制表符、或注释：
 
 ```ebnf
 whitespace ::= ' ' | '\n' | '\r' | '\t' | comment
 ```
 
-### Comments
+### 注释（Comments）
 
-A `comment` token in `wit` is either a line comment preceded with `//` which
-ends at the next newline (`\n`) character or it's a block comment which starts
-with `/*` and ends with `*/`. Note that block comments are allowed to be nested
-and their delimiters must be balanced
+`wit`中的`comment`标记要么是以`//`开头、换行符(`\n`)结尾的行注释，要么是以`/*`开头、`*/`结尾的块注释。请注意，块注释可以嵌套且其分隔符必须匹配。
 
 ```ebnf
 comment ::= '//' character-that-isnt-a-newline*
           | '/*' any-unicode-character* '*/'
 ```
 
-### Operators
+### 运算符（Operators）
 
-There are some common operators in the lexical structure of `wit` used for
-various constructs. Note that delimiters such as `{` and `(` must all be
-balanced.
+在`wit`的词法结构中，有一些常见的运算符用于各种构造。需要注意的是，像`{`和`(`这样的定界符必须是配对的。
 
 ```ebnf
 operator ::= '=' | ',' | ':' | ';' | '(' | ')' | '{' | '}' | '<' | '>' | '*' | '->' | '/' | '.' | '@'
 ```
 
-### Keywords
+### 关键字（Keywords）
 
-Certain identifiers are reserved for use in WIT documents and cannot be used
-bare as an identifier. These are used to help parse the format, and the list of
-keywords is still in flux at this time but the current set is:
+某些标识符为WIT文档保留使用，不能直接用作标识符。其用于帮助解析格式，并且关键字列表目前仍在变化中，但当前的集合是：
 
 ```ebnf
 keyword ::= 'use'
@@ -748,22 +735,19 @@ keyword ::= 'use'
           | 'include'
 ```
 
-### Integers
+### 整数（Integers）
 
-Integers are currently only used for package versions and are a contiguous
-sequence of digits:
+整数目前仅用于包版本，是连续的数字序列：
 
 ```ebnf
 integer ::= [0-9]+
 ```
 
-## Top-level items
+## 顶层项目（Top-level items）
 
-A `wit` document is a sequence of items specified at the top level. These items
-come one after another and it's recommended to separate them with newlines for
-readability but this isn't required.
+`wit`文档是一系列在顶层指定的项目。这些项目一个接一个的出现，建议使用换行符将它们分开以提高可读性，但这不是必需的。
 
-Concretely, the structure of a `wit` file is:
+具体来说，`wit`文件结构：
 
 ```ebnf
 wit-file ::= explicit-package-list | implicit-package-definition
