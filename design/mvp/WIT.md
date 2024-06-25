@@ -40,8 +40,7 @@ package wasi:clocks@1.2.0;
 
 WIT包可以由一组文件定义，且至少有一个文件须指定包名。多个文件可以指定`package`，但它们必须统一包名。
 
-Alternatively, many packages can be declared consecutively in one or more
-files, if the "explicit" package notation is used:
+或者，如果使用“显示的(explicit)”包表示法，可以在一个或多个文件中连续声明多个包：
 
 ```wit
 package local:a {
@@ -747,15 +746,13 @@ integer ::= [0-9]+
 
 `wit`文档是一系列在顶层指定的项目。这些项目一个接一个的出现，建议使用换行符将它们分开以提高可读性，但这不是必需的。
 
-具体来说，`wit`文件结构：
+具体来说，`wit`文件的具体结构如下：
 
 ```ebnf
 wit-file ::= explicit-package-list | implicit-package-definition
 ```
 
-Files may be organized in two arrangements. The first of these is as a series
-of multiple consecutive "explicit" `package ... {...}` declarations, with the
-package's contents contained within the brackets.
+文件可以按两种方式组织。第一种是作为一系列连续的多个“显示”`package ... {...}`声明，包的内容在括号内。
 
 ```ebnf
 explicit-package-list ::= explicit-package-definition*
@@ -763,30 +760,25 @@ explicit-package-list ::= explicit-package-definition*
 explicit-package-definition ::= package-decl '{' package-items* '}'
 ```
 
-Alternatively, a file may "implicitly" consist of an optional `package ...;`
-declaration, followed by a list of package items.
+或者，文件可以“隐式地”由可选`package ...;`声明，和随后的包项目(package items)列表组成。
 
 ```ebnf
 implicit-package-definition ::= package-decl? package-items*
 ```
 
-These two structures cannot be mixed: a file may be written in either in the
-explicit or implicit styles, but not both at once.
+这两种结构不能混合：文件可以由显式或隐式样式写入，但不能同时使用两种样式。
 
-All other declarations in a `wit` document are tied to a package, and defined
-as follows. A package definition consists of one or more such items:
+`wit`文档中的所有其他声明都与包相关联，并定义如下。包定义由一个或多个这样的项组成：
 
 ```ebnf
 package-items ::= toplevel-use-item | interface-item | world-item
 ```
 
-### Feature Gates
+### 特性限制（Feature Gates）
 
-Various WIT items can be "gated", to reflect the fact that the item is part of
-an unstable feature or that the item was added as part of a minor version
-update and shouldn't be used when targeting an earlier minor version.
+各种wit项可以被“限制”，以反映该项是不稳定功能的一部分，或该项是作为次要版本更新的一部分添加的，不应在针对早起次要版本时使用。
 
-For example, the following interface has 4 items, 3 of which are gated:
+例如，以下接口有4个项目，其中3个是限制的：
 ```wit
 interface foo {
   a: func();
@@ -801,32 +793,13 @@ interface foo {
   d: func();
 }
 ```
-The `@since` gate indicates that `b` and `c` were added as part of the `0.2.1`
-and `0.2.2` releases, resp. Thus, when building a component targeting, e.g.,
-`0.2.1`, `b` can be used, but `c` cannot. An important expectation set by the
-`@since` gate is that, once applied to an item, the item is not modified
-incompatibly going forward (according to general semantic versioning rules).
+`@since`限制表示`b`和`c`是在`0.2.1`和`0.2.2`版本中添加的。因此，当构建一个目标版本为`0.2.1`的组件时，可以使用`b`，但不能使用`c`。`@since`限制设定的一个重要期望是，一旦将其应用到一个项目，该项目将不会向前进行不兼容的修改（根据一般的语义版本控制规则）。
 
-In contrast, the `@unstable` gate on `d` indicates that `d` is part of the
-`fancier-foo` feature that is still under active development and thus `d` may
-change type or be removed at any time. An important expectation set by the
-`@unstable` gate is that toolchains will not expose `@unstable` features by
-default unless explicitly opted-into by the developer.
+相反，`d`上的`@unstable`限制表示`d`是仍在积极开发的`fancier-foo`功能的一部分，因此`d`可能改变类型或随时移除。`@unstable`限制设定的一个重要期望是，工具链默认不会暴露`@unstable`功能，除非开发者明确选择。
 
-Together, these gates support a development flow in which new features start
-with an `@unstable` gate while the details are still being hashed out. Then,
-once the feature is stable (and, in a WASI context, voted upon), the
-`@unstable` gate is switched to a `@since` gate. To enable a smooth transition
-(during which producer toolchains are targeting a version earlier than the
-`@since`-specified `version`), the `@since` gate contains an optional `feature`
-field that, when present, says to enable the feature when *either* the target
-version is greator-or-equal *or* the feature name is explicitly enabled by the
-developer. Thus, `c` is enabled if the version is `0.2.2` or newer or the
-`fancy-foo` feature is explicitly enabled by the developer. The `feature` field
-can be removed once producer toolchains have updated their default version to
-enable the feature by default.
+这两个门支持一种开发流程，在这种流程中，新功能在细节仍在讨论中时以`@unstable`限制开始。然后，一旦功能稳定（并且，在WASI上下文中，经过投票），`@unstable`限制会切换为`@since`限制。为了实现平滑过渡（在此期间，生产工具链的目标版本早于 `@since`指定的`version`），`@since`限制包含一个可选的`feature`字段，当该字段存在时，表示当目标版本大于*或*等于，*或者*开发者明确启用了特性(feature)名称时，启用该特性。因此，如果版本是`0.2.2`或更高，或者开发者明确启用了`fancy-foo`特性，`c`就会被启用。一旦生产工具链更新了他们的默认版本以默认启用该特性，就可以移除特性字段。
 
-Specifically, the syntax for feature gates is:
+具体来说，特性限制的语法是：
 ```wit
 gate ::= unstable-gate
        | since-gate
@@ -835,8 +808,7 @@ feature-field ::= 'feature' '=' id
 since-gate ::= '@since' '(' 'version' '=' <valid semver> ( ',' feature-field )? ')'
 ```
 
-As part of WIT validation, any item that refers to another gated item must also
-be compatibly gated. For example, this is an error:
+作为WIT验证的一部分，任何引用另一个限制项的项目也必须兼容地进行限制。例如，这是一个错误：
 ```wit
 interface i {
   @since(version = 1.0.1)
@@ -845,36 +817,31 @@ interface i {
   type t2 = t1; // error
 }
 ```
-Additionally, if an item is *contained* by a gated item, it must also be
-compatibly gated. For example, this is an error:
+此外，如果某项*包含*在限制项中，则该项也必须兼容门控。例如，这是一个错误：
 ```wit
 @since(version = 1.0.2)
 interface i {
-  foo: func();  // error: no gate
+  foo: func();  // 错误: 没有限制
 
   @since(version = 1.0.1)
-  bar: func();  // also error: weaker gate
+  bar: func();  // 同样错误: 放松限制
 }
 ```
 
-## Package declaration
+## 包声明（Package declaration）
 [package declaration]: #package-declaration
 
-WIT files optionally start with a package declaration which defines the name of
-the package.
+WIT文件可以选择以定义包名称的包声明开头。
 
 ```ebnf
 package-decl        ::= 'package' ( id ':' )+ id ( '/' id )* ('@' valid-semver)?  ';'
 ```
 
-The production `valid-semver` is as defined by
-[Semantic Versioning 2.0](https://semver.org/) and optional.
+`valid-semver`项按[语义版本2.0(Semantic Versioning 2.0)](https://semver.org/)定义并且是可选的。
 
-## Item: `toplevel-use`
+## 项：`toplevel-use`（Item: `toplevel-use`）
 
-A `use` statement at the top-level of a file can be used to bring interfaces
-into the scope of the current file and/or rename interfaces locally for
-convenience:
+文件顶层的`use`语句可以用于将接口引入当前文件的范围，并/或为了方便在本地重命名接口：
 
 ```ebnf
 toplevel-use-item ::= 'use' use-path ('as' id)? ';'
@@ -884,25 +851,19 @@ use-path ::= id
            | ( id ':' )+ id ( '/' id )+ ('@' valid-semver)? 🪺
 ```
 
-Here `use-path` is an [interface name]. The bare form `id`
-refers to interfaces defined within the current package, and the full form
-refers to interfaces in package dependencies.
+此处的`use-path`是[接口名称(interface name)][interface name]。裸形式`id`指的是在当前包内定义的接口，而完全形式则指的是在包依赖中的接口。
 
-The `as` syntax can be optionally used to specify a name that should be assigned
-to the interface. Otherwise the name is inferred from `use-path`.
+`as`语法可以选择性地用来指定应赋予接口的名称。否则，名称将从`use-path`中推断而来。
 
-As a future extension, WIT, components and component registries may allow
-nesting both namespaces and packages, which would then generalize the syntax of
-`use-path` as suggested by the 🪺 suffixed rule.
+作为未来的扩展，WIT、组件和组件注册表可能允许嵌套命名空间和包，这将会使得`use-path`的语法更加通用，如 🪺 后缀规则所示。
 
 [Interface Name]: Explainer.md#import-and-export-definitions
 
-## Item: `world`
+## 项：`world`（Item: `world`）
 
-Worlds define a [`componenttype`] as a collection of imports and exports, all
-of which can be gated.
+世界定义了一个组件类型([`componenttype`])，它是一系列可以进行控制的导入和导出的集合。
 
-Concretely, the structure of a world is:
+具体来说，world的结构如下：
 
 ```ebnf
 world-item ::= gate 'world' id '{' world-items* '}'
@@ -923,16 +884,14 @@ import-item ::= 'import' id ':' extern-type
 extern-type ::= func-type ';' | 'interface' '{' interface-items* '}'
 ```
 
-Note that worlds can import types and define their own types to be exported
-from the root of a component and used within functions imported and exported.
-The `interface` item here additionally defines the grammar for IDs used to refer
-to `interface` items.
+请注意，world可以导入类型并定义自己的类型，以便从组件的根导出并在导入和导出的函数中使用。此处`interface`项还定义了用于引用`interface`项的ID的语法。
+
 
 [`componenttype`]: Explainer.md#type-definitions
 
-## Item: `include`
+## 项：`include`（Item: `include`）
 
-A `include` statement enables the union of the current world with another world. The structure of an `include` statement is:
+`include`语句可以将当前world与另一个world合并。`include`语句的结构如下：
 
 ```wit
 include wasi:io/my-world-1 with { a as a1, b as b1 };
@@ -949,14 +908,13 @@ include-names-list ::= include-names-item
 include-names-item ::= id 'as' id
 ```
 
-## Item: `interface`
+## 项：`interface`（Item: `interface`）
 
-Interfaces can be defined in a `wit` file. Interfaces have a name and a
-sequence of items and functions, all of which can be gated.
+接口可以在`wit`文件中定义。接口有一个名称和一系列可以进行控制的项目和函数。
 
-Specifically interfaces have the structure:
+具体来说，接口的结构如下：
 
-> **Note**: The symbol `ε`, also known as Epsilon, denotes an empty string.
+> **注意**：符号`ε`，也被称为Epsilon，表示一个空字符串。
 
 ```ebnf
 interface-item ::= gate 'interface' id '{' interface-items* '}'
@@ -991,17 +949,16 @@ named-type ::= id ':' ty
 ```
 
 
-## Item: `use`
+## 项：`use`（Item: `use`）
 
-A `use` statement enables importing type or resource definitions from other
-wit packages or interfaces. The structure of a use statement is:
+`use`语句允许从其他wit包或接口导入类型或资源定义。use语句的结构如下：
 
 ```wit
 use an-interface.{a, list, of, names}
 use my:dependency/the-interface.{more, names as foo}
 ```
 
-Specifically the structure of this is:
+具体来说，其结构如下：
 
 ```ebnf
 use-item ::= 'use' use-path '.' '{' use-names-list '}' ';'
@@ -1013,36 +970,30 @@ use-names-item ::= id
                  | id 'as' id
 ```
 
-Note: Here `use-names-list?` means at least one `use-name-list` term.
+注意：此处`use-names-list?`表示至少一个`use-name-list`术语。
 
-## Items: type
+## 项：类型（Items: type）
 
-There are a number of methods of defining types in a `wit` package, and all of
-the types that can be defined in `wit` are intended to map directly to types in
-the [component model](https://github.com/WebAssembly/component-model).
+在`wit`包中定义类型的方法有很多种，并且`wit`中所有可以定义的类型都旨在直接映射到[组件模型](https://github.com/WebAssembly/component-model)中的类型。
 
-### Item: `type` (alias)
+### 项：`type`(别名)（Item: `type` (alias)）
 
-A `type` statement declares a new named type in the `wit` document. This name can
-be later referred to when defining items using this type. This construct is
-similar to a type alias in other languages
+`type`语句在`wit`文档中声明一个新的命名类型。后续在使用此类型定义项时可以引用此名称。次构造类似于其他语言中的类型别名。
 
 ```wit
 type my-awesome-u32 = u32;
 type my-complicated-tuple = tuple<u32, s32, string>;
 ```
 
-Specifically the structure of this is:
+具体来说，其结构如下：
 
 ```ebnf
 type-item ::= 'type' id '=' ty ';'
 ```
 
-### Item: `record` (bag of named fields)
+### 项：`record`(命名字段包)（Item: `record` (bag of named fields)）
 
-A `record` statement declares a new named structure with named fields. Records
-are similar to a `struct` in many languages. Instances of a `record` always have
-their fields defined.
+`record`语句声明一个具有命名字段的新命名结构。record类似于许多语言中的`struct`。`record`实例始终具有已定义的字段。
 
 ```wit
 record pair {
@@ -1057,7 +1008,7 @@ record person {
 }
 ```
 
-Specifically the structure of this is:
+具体来说，其结构如下：
 
 ```ebnf
 record-item ::= 'record' id '{' record-fields '}'
@@ -1068,11 +1019,9 @@ record-fields ::= record-field
 record-field ::= id ':' ty
 ```
 
-### Item: `flags` (bag-of-bools)
+### 项：`flags`(布尔值包)（Item: `flags` (bag-of-bools)）
 
-A `flags` represents a bitset structure with a name for each bit. The `flags`
-type is represented as a bit flags representation in
-the canonical ABI.
+`flags`表示位集结构，每个位都有一个名称。该`flags`类型在规范ABI中表示为位标志表示。
 
 ```wit
 flags properties {
@@ -1082,7 +1031,7 @@ flags properties {
 }
 ```
 
-Specifically the structure of this is:
+具体来说，其结构如下：
 
 ```ebnf
 flags-items ::= 'flags' id '{' flags-fields '}'
@@ -1091,17 +1040,13 @@ flags-fields ::= id
                | id ',' flags-fields?
 ```
 
-### Item: `variant` (one of a set of types)
+### 项：`variant` (类型集合中的一个)（Item: `variant` (one of a set of types)）
 
-A `variant` statement defines a new type where instances of the type match
-exactly one of the variants listed for the type. This is similar to a "sum" type
-in algebraic datatypes (or an `enum` in Rust if you're familiar with it).
-Variants can be thought of as tagged unions as well.
+`variant`语句定义了一种新类型，该类型的实例与其列出的变体之一完全匹配。这类似于代数数据类型中的"sum"类型（或者如果你熟悉 Rust，那就是`enum`）。变体(variant)也可以被认为是带标签的联合。
 
-Each case of a variant can have an optional type associated with it which is
-present when values have that particular case's tag.
+variant的每个分支都可以有一个可选类型与之关联，当值具有该特定分支的标签时，这个类型就会出现。
 
-All `variant` type must have at least one case specified.
+所有的`variant`类型必须至少指定一个分支。
 
 ```wit
 variant filter {
@@ -1111,7 +1056,7 @@ variant filter {
 }
 ```
 
-Specifically the structure of this is:
+具体来说，其结构如下：
 
 ```ebnf
 variant-items ::= 'variant' id '{' variant-cases '}'
@@ -1123,12 +1068,9 @@ variant-case ::= id
                | id '(' ty ')'
 ```
 
-### Item: `enum` (variant but with no payload)
+### 项：`enum`(无载荷的variant)（Item: `enum` (variant but with no payload)）
 
-An `enum` statement defines a new type which is semantically equivalent to a
-`variant` where none of the cases have a payload type. This is special-cased,
-however, to possibly have a different representation in the language ABIs or
-have different bindings generated in for languages.
+`enum`语句定义了一种新类型，其语义等同于`variant`，但无有效荷载类型的情况。然而，这种情况被特殊处理，可能在语言ABI中有不同的表示形式，或者针对不同的语言生成不同的绑定。
 
 ```wit
 enum color {
@@ -1140,7 +1082,7 @@ enum color {
 }
 ```
 
-Specifically the structure of this is:
+具体来说，其结构如下：
 
 ```ebnf
 enum-items ::= 'enum' id '{' enum-cases '}'
