@@ -1091,29 +1091,19 @@ enum-cases ::= id
              | id ',' enum-cases?
 ```
 
-### Item: `resource`
+### 项：`resource`（Item: `resource`）
 
-A `resource` statement defines a new abstract type for a *resource*, which is
-an entity with a lifetime that can only be passed around indirectly via [handle
-values](#handles). Resource types are used in interfaces to describe things
-that can't or shouldn't be copied by value.
+`resource`语句为*资源*定义了一个新的抽象类型，资源时一种具有生命周期的实体，只能通过[句柄值(handle values)](#handles)间接地传递。资源类型在接口(interface)中用于描述不能活不应通过值复制的事物。
 
-For example, the following Wit defines a resource type and a function that
-takes and returns a handle to a `blob`:
+例如，以下Wit定义了一种资源类型，以及一个接受并返回`blob`句柄的函数：
 ```wit
 resource blob;
 transform: func(blob) -> blob;
 ```
 
-As syntactic sugar, resource statements can also declare any number of
-*methods*, which are functions that implicitly take a `self` parameter that is
-a handle. A resource statement can also contain any number of *static
-functions*, which do not have an implicit `self` parameter but are meant to be
-lexically nested in the scope of the resource type. Lastly, a resource
-statement can contain at most one *constructor* function, which is syntactic
-sugar for a function returning a handle of the containing resource type.
+作为语法糖，resource语句也可以声明任意数量的*方法(methods)*，其隐式接收一个句柄类型的`self`参数的函数。resource语句还可以包含任意数量的*静态方法(static function)*，其没有隐式的`self`参数但应在词法上嵌套在资源类型的范围内。最后，资源语句最多可以包含一个*构造器(constructor)*函数，它是返回包含资源类型句柄的函数的语法糖。
 
-For example, the following resource definition:
+例如，以下资源定义：
 ```wit
 resource blob {
     constructor(init: list<u8>);
@@ -1122,7 +1112,7 @@ resource blob {
     merge: static func(lhs: borrow<blob>, rhs: borrow<blob>) -> blob;
 }
 ```
-desugars into:
+解析为：
 ```wit
 resource blob;
 %[constructor]blob: func(init: list<u8>) -> blob;
@@ -1130,20 +1120,11 @@ resource blob;
 %[method]blob.read: func(self: borrow<blob>, n: u32) -> list<u8>;
 %[static]blob.merge: func(lhs: borrow<blob>, rhs: borrow<blob>) -> blob;
 ```
-These `%`-prefixed [`name`s](Explainer.md) embed the resource type name so that
-bindings generators can generate idiomatic syntax for the target language or
-(for languages like C) fall back to an appropriately-prefixed free function
-name.
+这些以`%`为前缀的[`名称`](Explainer.md)嵌入了资源类型名称，以便绑定生成器可以为目标语言生成惯用语法，或者（对于像C这样的语义）回退到导游适当前缀的自由函数名称。、
 
-When a resource type name is used directly (e.g. when `blob` is used as the
-return value of the constructor above), it stands for an "owning" handle
-that will call the resource's destructor when dropped. When a resource
-type name is wrapped with `borrow<...>`, it stands for a "borrowed" handle
-that will *not* call the destructor when dropped. As shown above, methods
-always desugar to a borrowed self parameter whereas constructors always
-desugar to an owned return value.
+当直接使用资源类型名称时（例如，当`blob`用作上述构造函数的返回值时），它代表“自有”句柄，当丢弃时将调用资源的析构函数。当资源类型名称被`borrow<...>`包裹时，它代表“借用”句柄，当丢弃时*不会*调用析构函数。如上所示，方法总是解析为一个借用self参数，而构造函数总是解析为一个拥有的返回值。
 
-Specifically, the syntax for a `resource` definition is:
+具体来说，资源定义的语法是：
 ```ebnf
 resource-item ::= 'resource' id ';'
                 | 'resource' id '{' resource-method* '}'
@@ -1152,14 +1133,11 @@ resource-method ::= func-item
                   | 'constructor' param-list ';'
 ```
 
-The syntax for handle types is presented [below](#handles).
+句柄类型的语法[如下](#handles)所示。
 
-## Types
+## 类型（Types）
 
-As mentioned previously the intention of `wit` is to allow defining types
-corresponding to the interface types specification. Many of the top-level items
-above are introducing new named types but "anonymous" types are also supported,
-such as built-ins. For example:
+如前所述，`wit`旨在允许定义与接口类型规范相对应的类型。上面的许多顶层项都引入了新的命名类型，但也支持“匿名(anonymous)”类型，例如内置类型。例如：
 
 ```wit
 type number = u32;
@@ -1167,7 +1145,7 @@ type fallible-function-result = result<u32, string>;
 type headers = list<string>;
 ```
 
-Specifically the following types are available:
+具体来说，有以下类型可供选择：
 
 ```ebnf
 ty ::= 'u8' | 'u16' | 'u32' | 'u64'
@@ -1197,12 +1175,9 @@ result ::= 'result' '<' ty ',' ty '>'
          | 'result'
 ```
 
-The `tuple` type is semantically equivalent to a `record` with numerical fields,
-but it frequently can have language-specific meaning so it's provided as a
-first-class type.
+`tuple`类型在语义上等同于具有数值字段的`record`，但其经常可以具有特定于语言的含义，所以她被视为一种一等类型。
 
-Similarly the `option` and `result` types are semantically equivalent to the
-variants:
+类似地，`option`和`result类型在语义上等同于variant：  
 
 ```wit
 variant option {
@@ -1216,68 +1191,54 @@ variant result {
 }
 ```
 
-These types are so frequently used and frequently have language-specific
-meanings though so they're also provided as first-class types.
+这些类型经常被使用，并且经常具有特定于语言的含义，所以它们也被提供为一等类型。
 
-Finally the last case of a `ty` is simply an `id` which is intended to refer to
-another type or resource defined in the document. Note that definitions can come
-through a `use` statement or they can be defined locally.
+最后，`ty`的最后一种情况就是简单的`id`，其目的是引用文档中定义的另一种类型或资源。请注意，这些定义可以来源于`use`语句，也可以在本地定义。
 
-## Handles
+## 句柄（Handles）
 
-There are two types of handles in Wit: "owned" handles and "borrowed" handles.
-Owned handles represent the passing of unique ownership of a resource between
-two components. When the owner of an owned handle drops that handle, the
-resource is destroyed. In contrast, a borrowed handle represents a temporary
-loan of a handle from the caller to the callee for the duration of the call.
+Wit有两种句柄类型：“自有(owned)”句柄和“借用(borrowed)”句柄。自有句柄表示在两个组件间传递资源的唯一所有权。当自有句柄的所有者丢弃句柄时，资源会被销毁。相比之下，借用句柄表示在调用期间从调用者(caller)到被调用者(callee)的句柄的临时借用。
 
-The syntax for handles is:
+句柄的语法是：
 ```ebnf
 handle ::= id
          | 'borrow' '<' id '>'
 ```
 
-The `id` case denotes an owned handle, where `id` is the name of a preceding
-`resource` item. Thus, the "default" way that resources are passed between
-components is via transfer of unique ownership.
 
-The resource method syntax defined above is syntactic sugar that expands into
-separate function items that take a first parameter named `self` of type
-`borrow`. For example, the compound definition:
+`id`表示一个自有句柄，其中`id`是先前的`resource`项。因此，资源在组件之间传递的“默认”方式是通过唯一所有权的转移。
+
+上面定义资源方法的语法是语法糖，它扩展为单独的函数项，这些函数项接受一个名为`self`的第一个参数，参数的类型为`borrow`。例如，复合定义：
 ```wit
 resource file {
     read: func(n: u32) -> list<u8>;
 }
 ```
-is expanded into:
+扩展为：
 ```wit
 resource file
 %[method]file.read: func(self: borrow<file>, n: u32) -> list<u8>;
 ```
-where `%[method]file.read` is the desugared name of a method according to the
-Component Model's definition of [`name`](Explainer.md).
+其中`%[method]file.read`是方法根据组件模型的[命名(`name`)](Explainer.md)定义的解析后的名称。
 
+## 名称解析（Name resolution）
 
-## Name resolution
-
-A `wit` document is resolved after parsing to ensure that all names resolve
-correctly. For example this is not a valid `wit` document:
+`wit`文档在解析(parse)后进行解析(resolve)，以确保所有名称都能正确解析。例如这不是有效的`wit`文档：
 
 ```wit
-type foo = bar;  // ERROR: name `bar` not defined
+type foo = bar;  // 错误：名称`bar`未定义
 ```
 
-Type references primarily happen through the `id` production of `ty`.
+类型引用主要通过`ty`的`id`产生。
 
-Additionally names in a `wit` document can only be defined once:
+此外，`wit`文档中的名称只能定义一次：
 
 ```wit
 type foo = u32;
-type foo = u64;  // ERROR: name `foo` already defined
+type foo = u64;  // 错误：名称`foo`已定义
 ```
 
-Names do not need to be defined before they're used (unlike in C or C++),
-it's ok to define a type after it's used:
+名称不需要在使用前定义（与C或C++不同），可以在使用后定义类型：
 
 ```wit
 type foo = bar;
@@ -1287,21 +1248,21 @@ record bar {
 }
 ```
 
-Types, however, cannot be recursive:
+但是类型不能是递归的：
 
 ```wit
-type foo = foo;  // ERROR: cannot refer to itself
+type foo = foo;  // 错误：不能引用自身
 
 record bar1 {
     a: bar2,
 }
 
 record bar2 {
-    a: bar1,    // ERROR: record cannot refer to itself
+    a: bar1,    // 错误：record不能引用自身
 }
 ```
 
-# Package Format
+# 包格式（Package Format）
 [package-format]: #package-format
 
 Each top-level WIT definition can be compiled into a single canonical
