@@ -2,7 +2,7 @@
 
 解释器本文介绍了组件的汇编级(assembly-level)定义，以及原生JavaScript运行时组件嵌入提案。如需面向用户的详细说明，请查看[**组件模型文档**][Component Model Documentation]。
 
-* [特性封闭（Gated features）](#特性封闭gated-features)
+* [门控特性（Gated features）](#门控特性gated-features)
 * [语法](#语法)
   * [组件定义（Component Definitions）](#组件定义component-definitions)
     * [索引空间（Inedx Spaces）](#索引空间inedx-spaces)
@@ -30,7 +30,7 @@
 * [示例（Examples）](#示例examples)
 * [TODO](#TODO)
 
-## 特性封闭（Gated features）
+## 门控特性（Gated features）
 
 默认情况下，本解释器中描述的功能（以及支持的[Binary.md](Binary.md)、[WIT.md](WIT.md)和[CanonicalABI.md](CanonicalABI.md)）已实现并包含在[WASI Preview 2]稳定性里程碑中。不属于 Preview 2 的功能由以下列出的表情符号之一划定；这些表情符号将在实现、被视为稳定并包含在未来的里程碑中后被删除：
 * 🪙: 值导入/导出(imports/exports)和组件级启动函数(component-level start function)
