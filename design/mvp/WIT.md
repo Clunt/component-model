@@ -1338,12 +1338,6 @@ interface namespace {
 )
 ```
 此示例说明了接口的基本结构：
-* The wrapping component-type has an `import` for every `use` in the interface,
-  bringing any `use`d types into scope so that they can be aliased when
-  building the instance-type. The component-type can be thought of as
-  "parameterizing" the interface's compiled instance type (∀T.{instance type}).
-  Note that there is *always* an outer wrapping component-type, even when the
-  interface contains no `use`s.
 * 每个顶层WIT定义（在此示例中为：`types`和`namespace`）都变成相同的烤串命名(kebab-name)的类型导出。
 * 每个WIT接口都映射到一个组件类型，该组件类型导出一个具有完全限定[接口名称][interface name]的实例（在此示例中为：`local:demo/types`和`local:demo/namespace`）。注意，此嵌套方案允许单个组件定义和实现WIT接口，而不会发生名称冲突。
 * 包装组件类型在接口中的每个`use`都有`import`，将所有`use`类型引入到作用域中，以便在构建实例类型时可以对它们进行别名化。组件类型可以被认为是“参数化”接口的编译实例类型（∀T.{instance type}）。注意，即使接口(interface)不包含`use`也*始终*存在外部包装组件类型。
