@@ -40,6 +40,19 @@ package wasi:clocks@1.2.0;
 
 WIT包可以由一组文件定义，且至少有一个文件须指定包名。多个文件可以指定`package`，但它们必须统一包名。
 
+Alternatively, many packages can be declared consecutively in one or more
+files, if the "explicit" package notation is used:
+
+```wit
+package local:a {
+  interface foo {}
+}
+
+package local:b {
+  interface bar {}
+}
+```
+
 包名用于生成在组件模型中代表[导入名和导出名]的[`接口(interface)`][interfaces]和[`世界(world)`][worlds]，具体描述[如下](#package-format)。
 
 [导入名和导出名]: Explainer.md#import-and-export-definitions
@@ -523,7 +536,7 @@ interface a {
   resource r;
 }
 interface b {
-  use a.{r}; 
+  use a.{r};
   foo: func() -> r;
 }
 
@@ -737,7 +750,34 @@ integer ::= [0-9]+
 具体来说，`wit`文件结构：
 
 ```ebnf
-wit-file ::= package-decl? (toplevel-use-item | interface-item | world-item)*
+wit-file ::= explicit-package-list | implicit-package-definition
+```
+
+Files may be organized in two arrangements. The first of these is as a series
+of multiple consecutive "explicit" `package ... {...}` declarations, with the
+package's contents contained within the brackets.
+
+```ebnf
+explicit-package-list ::= explicit-package-definition*
+
+explicit-package-definition ::= package-decl '{' package-items* '}'
+```
+
+Alternatively, a file may "implicitly" consist of an optional `package ...;`
+declaration, followed by a list of package items.
+
+```ebnf
+implicit-package-definition ::= package-decl? package-items*
+```
+
+These two structures cannot be mixed: a file may be written in either in the
+explicit or implicit styles, but not both at once.
+
+All other declarations in a `wit` document are tied to a package, and defined
+as follows. A package definition consists of one or more such items:
+
+```ebnf
+package-items ::= toplevel-use-item | interface-item | world-item
 ```
 
 ### Feature Gates
