@@ -1265,15 +1265,9 @@ record bar2 {
 # 包格式（Package Format）
 [package-format]: #package-format
 
-Each top-level WIT definition can be compiled into a single canonical
-Component Model [type definition](Explainer.md#type-definitions) that
-captures the result of performing the type resolution described above. These
-Component Model types can then be exported by a component along with other
-sorts of exports, allowing a single component to package both runtime
-functionality and development-time WIT interfaces. Thus, WIT does not need its
-own separate package format; WIT can be packaged as a component binary.
+每个顶层WIT定义可以编译成单个规范的组件模型[类型定义(type definition)](Explainer.md#type-definitions)，该定义捕获上述类型解析执行的结果。这些组件模型类型可以与其他类别和导出的组件一同被导出，从而允许单个组件同时打包运行时功能和开发时WIT接口。因此，WIT不需要自己单独的包格式；WIT可以作为组件二进制打包。
 
-Using component binaries to package WIT in this manner has several advantages:
+以这种方式使用组件二进制文件打包WIT有几个优点：
 * We get to reuse the [binary format](Binary.md) of components, especially the
   tricky type bits.
 * Downstream tooling does not need to replicate the resolution logic nor the
@@ -1291,6 +1285,16 @@ Using component binaries to package WIT in this manner has several advantages:
   (e.g., an engine component can define and exports its own plugin `world`).
 
 As a first example, the following WIT:
+
+
+
+* 我们可以重用组件的[二进制格式](Binary.md)，特别是棘手的类型位。
+* 下游工具不需要复制WIT包生产者者的解析逻辑或解析环境（目录，注册表，路径，参数等）；它可以重用更简单的编译结果。
+* WIT语法的许多方面可以随着时间的推移演变，而不会破坏下游工具，这与Core WebAssembly WAT文本格式随着时间的推移发生的情况类似。
+* 当组件在注册表中发布并分配名称时（参见[导入和导出定义](Explainer.md#import-and-export-definitions)中的命名讨论），WIT接口(interface)和世界(world)可以使用相同的工具发布，并使用相同的`namespace:package/export`命名方案命名。
+* 单个包可以包含一个实现，以及由该实现导入的一系列`interface`和`world` 定义（例如，引擎组件可以定义和导出自己的插件`world`）。
+
+作为第一个例子，以下WIT：
 ```wit
 package local:demo;
 
@@ -1306,7 +1310,7 @@ interface namespace {
   open: func(name: string) -> file;
 }
 ```
-can be packaged into a component as:
+可以打包成一个组件：
 ```wasm
 (component
   (type (export "types") (component
@@ -1333,38 +1337,22 @@ can be packaged into a component as:
   ))
 )
 ```
-This example illustrates the basic structure of interfaces:
-* Each top-level WIT definition (in this example: `types` and `namespace`)
-  turns into a type export of the same kebab-name.
-* Each WIT interface is mapped to a component-type that exports an
-  instance with a fully-qualified [interface name]  (in this example:
-  `local:demo/types` and `local:demo/namespace`). Note that this nested
-  scheme allows a single component to both define and implement a WIT interface
-  without name conflict.
+此示例说明了接口的基本结构：
 * The wrapping component-type has an `import` for every `use` in the interface,
   bringing any `use`d types into scope so that they can be aliased when
   building the instance-type. The component-type can be thought of as
   "parameterizing" the interface's compiled instance type (∀T.{instance type}).
   Note that there is *always* an outer wrapping component-type, even when the
   interface contains no `use`s.
+* 每个顶层WIT定义（在此示例中为：`types`和`namespace`）都变成相同的烤串命名(kebab-name)的类型导出。
+* 每个WIT接口都映射到一个组件类型，该组件类型导出一个具有完全限定[接口名称][interface name]的实例（在此示例中为：`local:demo/types`和`local:demo/namespace`）。注意，此嵌套方案允许单个组件定义和实现WIT接口，而不会发生名称冲突。
+* 包装组件类型在接口中的每个`use`都有`import`，将所有`use`类型引入到作用域中，以便在构建实例类型时可以对它们进行别名化。组件类型可以被认为是“参数化”接口的编译实例类型（∀T.{instance type}）。注意，即使接口(interface)不包含`use`也*始终*存在外部包装组件类型。
 
-One useful consequence of this encoding scheme is that each top-level
-definition is self-contained and valid (according to Component Model validation
-rules) independent of each other definition. This allows packages to be
-trivially split or unioned (assuming the result doesn't have to be a valid
-package, but rather just a raw list of non-exported type definitions).
+这种编码方案的一个有用结果是每个顶层定义都是自包含的并且是有效的（根据组件模型验证规则），独立于其他定义。这允许轻松地拆分或合并包（假设结果不必是有效的包，而只是非导出类型定义的原始列表）。
 
-Another expectation is that, when a component containing WIT definitions is
-published to a registry, the registry validates that the fully-qualified WIT
-interface names inside the component are consistent with the registry-assigned
-package name. For example, the above component would only be valid if published
-with package name `local:demo`; any other package name would be inconsistent
-with the internal `local:demo/types` and `local:demo/namespace` exported
-interface names.
+另一个预期是，当包含WIT定义的组件发布到注册表时，注册表会验证组件内部的完全限定的WIT接口名称是否与注册表分配的软件包名称一致。例如，上述组件只有在发布的包名为`local:demo`时才有效；任何其他软件包名称都会与内部`local:demo/types`和`local:demo/namespace`导出的接口名称不一致。
 
-Inter-package references are structurally no different than intra-package
-references other than the referenced WIT definition is not present in
-the component. For example, the following WIT:
+包间引用在结构上与包内引用没有区别，除了引用的 WIT 定义不在组件中。例如，以下WIT：
 ```wit
 package local:demo
 
@@ -1373,7 +1361,7 @@ interface foo {
   frob: func(r: request) -> request;
 }
 ```
-is encoded as:
+编码为：
 ```wasm
 (component
   (type (export "foo") (component
@@ -1388,8 +1376,7 @@ is encoded as:
 )
 ```
 
-Worlds are encoded similarly to interfaces, but replace the inner exported
-instance with an inner exported *component*. For example, this WIT:
+世界(world)的编码与接口类似，但将内部导出的实例替换为内部导出的*组件*。例如，此WIT：
 ```wit
 package local:demo;
 
@@ -1398,7 +1385,7 @@ world the-world {
   export run: func();
 }
 ```
-is encoded as:
+编码为：
 ```wasm
 (component
   (type (export "the-world") (component
@@ -1409,14 +1396,9 @@ is encoded as:
   ))
 )
 ```
-In the current version of WIT, the outer wrapping component-type will only ever
-contain a single `export` and thus only serves to separate the kebab-name
-export from the inner exported interface name and to provide consistency with
-the encoding of `interface` shown above.
+在当前版本的WIT中，外部包装的组件类型将只包含一个`export`，因此仅用于将烤串命名导出与内部导出的接口名称分开，并提供与上面展示的`interface`的编码的一致性。
 
-When a world imports or exports an interface, to produce a valid
-component-type, the interface's compiled instance-type ends up getting copied
-into the component-type. For example, the following WIT:
+当世界(world)导入或导出接口时，为了生成有效的组件类型，接口的编译实例类型最终会被复制到组件类型中。例如，以下WIT：
 ```wit
 package local:demo;
 
@@ -1428,7 +1410,7 @@ interface console {
   log: func(arg: string);
 }
 ```
-is encoded as:
+编码为：
 ```wasm
 (component
   (type (export "the-world") (component
@@ -1445,11 +1427,9 @@ is encoded as:
   ))
 )
 ```
-This duplication is useful in the case of cross-package references or split
-packages, allowing a compiled `world` definition to be fully self-contained and
-able to be used to compile a component without additional type information.
+这种重复在跨包引用或拆分包的情况下很有用，允许编译的`world`定义完全自包含，并且能够用于编译组件而无需额外的类型信息。
 
-Putting this all together, the following WIT definitions:
+综上所述，WIT 定义如下：
 ```wit
 // wasi-http repo
 
@@ -1474,7 +1454,7 @@ world proxy {
   export handler;
 }
 ```
-are encoded as:
+编码为：
 ```wasm
 (component
   (type (export "types") (component
@@ -1517,21 +1497,11 @@ are encoded as:
   ))
 )
 ```
-This examples shows how, in the context of concrete world (`wasi:http/proxy`),
-standalone interface definitions (such `wasi:http/handler`) are no longer in a
-"parameterized" form: there is no outer wrapping component-type and instead all
-`use`s are replaced by direct aliases to preceding type imports as determined
-by the WIT resolution process.
+这个例子展示了，在具体world（`wasi:http/proxy`）的上下文中，独立的接口定义（如`wasi:http/handler`）不再是“参数化”形式：没有外部包装的组件类型，而是所有的`use`都被替换为由WIT解析过程确定的先前类型导入的直接别名。
 
-Unlike most other WIT constructs, the `@since` and `@unstable` gates are not
-represented in the component binary. Instead, they are considered "macro"
-constructs that take the place of maintaining two copies of a single WIT
-document. In particular, when encoding a collection of WIT documents into a
-binary, the target version and set of explicitly-enabled feature names
-determine whether individual gated features are included in the encoded type or
-not.
+与大多数其他WIT构造不同，`@since`和`@unstable`限制不会在组件二进制文件中表示出来。相反，它们被视为“宏(macro)”构造，代替维护单个WIT文档的两个副本。具体而言，在将一组WIT文档编码为二进制时，目标版本和一组显式启用的功能名称决定了各个限制功能是否包含在编码类型中。
 
-For example, the following WIT document:
+例如，以下WIT文档：
 ```wit
 package ns:p@1.1.0;
 
@@ -1542,7 +1512,7 @@ interface i {
   g: func();
 }
 ```
-is encoded as the following component when the target version is `1.0.0`:
+当目标版本为`1.0.0`时，被编码为以下组件：
 ```wat
 (component
   (type (export "i") (component
@@ -1552,8 +1522,7 @@ is encoded as the following component when the target version is `1.0.0`:
   ))
 )
 ```
-If the target version was instead `1.1.0`, the same WIT document would be
-encoded as:
+如果目标版本为`1.1.0`，则相同的WIT文档将被编码为：
 ```wat
 (component
   (type (export "i") (component
@@ -1564,5 +1533,4 @@ encoded as:
   ))
 )
 ```
-Thus, `@since` and `@unstable` gates are not part of the runtime semantics of
-components, just part of the source-level tooling for producing components.
+因此，`@since`和`@unstable`限制不是组件运行时语义的一部分，而只是用于生成组件的源级工具的一部分。
