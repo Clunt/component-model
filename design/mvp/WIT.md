@@ -308,24 +308,16 @@ world invalid-union-world {
 
 目前，我们不遵循该`include`语句的子类型规则。也就是说，该`include`语句不暗示所包含的世界与联合世界之间的任何子类型关系。
 
-## WIT Packages and `use`
+## WIT包(Packages)和`use`
 [use]: #wit-packages-and-use
 
-A WIT package represents a unit of distribution that can be published to a
-registry, for example, and used by other WIT packages. WIT packages are a flat
-list of interfaces and worlds defined in `*.wit` files. The current thinking
-for a convention is that projects will have a `wit` folder where all
-`wit/*.wit` files within describe a single package.
+WIT包表示分发单元，例如，可以发布到注册表并由其他WIT包使用。WIT包是`*.wit`文件中定义的一系列接口(interface)和世界(world)的集合。目前的惯例是，项目都会有一个`wit`文件夹，其中所有的`wit/*.wit`文件联合起来描述一个完整的包。
 
-The purpose of the `use` statement is to enable sharing types between
-interfaces, even if they're defined outside of the current package in a
-dependency. The `use` statement can be used both within interfaces and worlds
-and at the top-level of a WIT file.
+`use`语句的目的是接口之间共享类型，即使它们在当前包之外的依赖项中定义。`use`语句可以在interface和world中使用，也可以用在WIT文件的顶层。
 
-#### Interfaces, worlds, and `use`
+#### 接口(interface)、世界(world)、和`use`
 
-A `use` statement inside of an `interface` or `world` block can be used to
-import types:
+`interface`或`world`块内的`use`语句可用于导入类型：
 
 ```wit
 package local:demo;
@@ -341,13 +333,9 @@ interface my-host-functions {
 }
 ```
 
-The `use` target, `types`, is resolved within the scope of the package to an
-interface, in this case defined prior. Afterwards a list of types are provided
-as what's going to be imported with the `use` statement. The interface `types`
-may textually come either after or before the `use` directive's interface.
-Interfaces linked with `use` must be acyclic.
+`use`的目标是`types`，在包的范围内会被解析为接口，在本例中是预先定义的。然后，提供了用`use`语句导入的类型列表。接口`type`在文本上可以出现在接口`use`指令之后或之前。与`use`关联的接口必须是无环的。
 
-Names imported via `use` can be renamed as they're imported as well:
+通过`use`导入的名称可以在导入时重命名：
 
 ```wit
 package local:demo;
@@ -357,11 +345,7 @@ interface my-host-functions {
 }
 ```
 
-This form of `use` is using a single identifier as the target of what's being
-imported, in this case `types`. The name `types` is first looked up within the
-scope of the current file, but it will additionally consult the package's
-namespace as well. This means that the above syntax still works if the
-interfaces are defined in sibling files:
+这种形式的`use`是使用单个标识符作为导入目标，在本例中为`types`。首先在当前文件范围中查找名称`types`，但它同时会查重包的命名空间。这意味着如果接口定义在同级文件中时上述语法仍然有效：
 
 ```wit
 // types.wit
@@ -379,15 +363,9 @@ interface my-host-functions {
 }
 ```
 
-Here the `types` interface is not defined in `host.wit` but lookup will find it
-as it's defined in the same package, just instead in a different file. Since
-files are not ordered, but type definitions in the Component Model are ordered
-and acyclic, the WIT parser will perform an implicit topological sort of all
-parsed WIT definitions to find an acyclic definition order (or produce an error
-if there is none).
+此处的`types`接口未定义在`host.wit`中但会找到它，因为它在同一个包中定义，只是在不同的文件中。由于文件没有排序，但组件模型中的类型定义是有序且无环的，因此WIT解析器将对所有解析的WIT定义进行隐式拓扑排序，以找到无环定义顺序（如果没有则报错）
 
-When importing or exporting an [interface][interfaces] in a [world][worlds]
-the same syntax is used in `import` and `export` directives:
+在[world][worlds]中导入或导出[interface][interfaces]，使用`import`和`export`指令的相同语法：
 
 ```wit
 // a.wit
@@ -409,8 +387,8 @@ interface another-interface {
 }
 ```
 
-When referring to an interface, a fully-qualified [interface name] can be used.
-For example, in this WIT document:
+引用接口时，可以使用完全限定的[接口名称(interface name)][interface name]。
+例如，在此WIT文档：
 ```wit
 package local:demo;
 
@@ -418,8 +396,8 @@ world my-world {
   import wasi:clocks/monotonic-clock;
 }
 ```
-The `monotonic-clock` interface of the `wasi:clocks` package is being imported.
-This same syntax can be used in `use` as well:
+`wasi:clocks`的`monotonic-clock`接口被导入。
+同样的语法可以用于`use`：
 
 ```wit
 package local:demo;
@@ -429,12 +407,11 @@ interface my-interface {
 }
 ```
 
-#### Top-level `use`
+#### 顶层(Top-level)`use`
 
-If a package being referred to has a version number, then using the above syntax
-so far it can get a bit repetitive to be referred to:
+如果引用的包有版本号，那么使用上述语法到目前为止可能会有点重复：
 
-```wit
+```wit·
 package local:demo;
 
 interface my-interface {
@@ -447,10 +424,7 @@ world my-world {
 }
 ```
 
-To reduce repetition and to possibly help avoid naming conflicts the `use`
-statement can additionally be used at the top-level of a file to rename
-interfaces within the scope of the file itself. For example the above could be
-rewritten as:
+为了减少重复并可能有助于避免命名冲突，`use`语句可以在文件顶层用于文件自身范围内的接口重命名。例如，上面的代码可以重写为：
 
 ```wit
 package local:demo;
@@ -468,21 +442,18 @@ world my-world {
 }
 ```
 
-The meaning of this and the previous world are the same, and `use` is purely a
-developer convenience for providing smaller names if necessary.
+这与之前世界的含义相同，`use`纯粹是为了方便开发人员在必要时提供较小的名字。
 
-The interface referred to by a `use` is the name that is defined in the current
-file's scope:
+`use`引用的接口是在当前文件范围内定义的名称：
 
 ```wit
 package local:demo;
 
-use wasi:http/types;   // defines the name `types`
-use wasi:http/handler; // defines the name `handler`
+use wasi:http/types;   // 定义名称`types`
+use wasi:http/handler; // 定义名称`handler`
 ```
 
-Like with interface-level-`use` the `as` keyword can be used to rename the
-inferred name:
+与接口级`use`类似，关键字`as`可以用于重命名推断名称：
 
 ```wit
 package local:demo;
@@ -491,8 +462,7 @@ use wasi:http/types as http-types;
 use wasi:http/handler as http-handler;
 ```
 
-Note that these can all be combined to additionally import packages with
-multiple versions and renaming as different WIT identifiers.
+注意这些都可以组合使用以导入多版本包并重命名为不同的WIT标识符。
 
 ```wit
 package local:demo;
@@ -503,15 +473,11 @@ use wasi:http/types@2.0.0 as http-types2;
 // ...
 ```
 
-### Transitive imports and worlds
+### 传递导入和世界（Transitive imports and worlds）
 
-A `use` statement is not implemented by copying type information around but
-instead retains that it's a reference to a type defined elsewhere. This
-representation is plumbed all the way through to the final component, meaning
-that `use`d types have an impact on the structure of the final generated
-component.
+`use`语句的实现不是通过复制类型信息，而是保留对其他地方定义的类型的引用。这种表示一直贯穿到最终组件，这意味着`use`类型会影响最终生成的组件结构。
 
-For example this document:
+例如此文档：
 
 ```wit
 package local:demo;
@@ -531,7 +497,7 @@ world my-world {
 }
 ```
 
-would generate this component:
+将生成此组件：
 
 ```wasm
 (component
@@ -547,17 +513,11 @@ would generate this component:
 )
 ```
 
-Here it can be seen that despite the `world` only listing `host` as an import
-the component additionally imports a `local:demo/shared` interface. This is due
-to the fact that the `use shared.{ ... }` implicitly requires that `shared` is
-imported into the component as well.
+此处可以看出尽管组件`world`仅列出`host`作为导入，但组件额外导入了`local:demo/shared`接口。这是因为`use shared.{ ... }`隐式地需要`shared`导入到组件中。
 
-Note that the name `"local:demo/shared"` here is derived from the name of the
-`interface` plus the package name `local:demo`.
+注意此处`"local:demo/shared"`名字是由`interface`加上包名`local:demo`组成。
 
-For `export`ed interfaces, any transitively `use`d interface is assumed to be an
-import unless it's explicitly listed as an export. For example, here `w1` is
-equivalent to `w2`:
+对于`export`接口，任何可传递的`use`接口都被视为导入，除非明确将其列为导出。例如，这里`w1`相当于`w2`：
 ```wit
 interface a {
   resource r;
@@ -576,17 +536,12 @@ world w2 {
 }
 ```
 
-> **Note**: It's planned in the future to have "power user syntax" to configure
-> this on a more fine-grained basis for exports, for example being able to
-> configure that a `use`'d interface is a particular import or a particular
-> export.
+> **注意**：未来计划使用“高级用户语法”来更细粒度地配置导出，例如能够配置某个use接口是特定的导入还是特定的导出。
 
-## WIT Functions
+## WIT函数（WIT Functions）
 [functions]: #wit-functions
 
-Functions are defined in an [`interface`][interfaces] or are listed as an
-`import` or `export` from a [`world`][worlds]. Parameters to a function must all
-be named and have case-insensitively unique names:
+函数定义于[`interface`][interfaces]，或在[`world`][worlds]中列为`import`或`export`。函数参数必须全部命名，并且名称在不区分大小写的情况下是唯一的：
 
 ```wit
 package local:demo;
@@ -598,7 +553,7 @@ interface foo {
 }
 ```
 
-Functions can return at most one unnamed type:
+函数最多可以返回一个未命名类型：
 
 ```wit
 package local:demo;
@@ -609,7 +564,7 @@ interface foo {
 }
 ```
 
-And functions can also return multiple types by naming them:
+并且函数还可以通过命名来返回多种类型：
 
 ```wit
 package local:demo;
@@ -619,35 +574,31 @@ interface foo {
 }
 ```
 
-Note that returning multiple values from a function is not equivalent to
-returning a tuple of values from a function. These options are represented
-distinctly in the component binary format.
+请注意，从函数返回多个值并不等同于从函数返回一组值。这些选项在组件二进制格式中以不同的方式表示。
 
-## WIT Types
+## WIT类型（WIT Types）
 [types]: #wit-types
 
-Types in WIT files can only be defined in [`interface`s][interfaces] at this
-time. The types supported in WIT is the same set of types supported in the
-component model itself:
+目前，WIT文件只能在[`interface`][interfaces]中定义类型。WIT中支持的类型与组件模型本身支持的类型相同：
 
 ```wit
 package local:demo;
 
 interface foo {
-  // "package of named fields"
+  // "命名字段包（package of named fields）"
   record r {
     a: u32,
     b: string,
   }
 
-  // values of this type will be one of the specified cases
+  // 此类型的值将是指定的情况之一
   variant human {
     baby,
-    child(u32), // optional type payload
+    child(u32), // 可选类型载荷(payload)
     adult,
   }
 
-  // similar to `variant`, but no type payloads
+  // 类似于`variant`，但没有类型载荷
   enum errno {
     too-big,
     too-small,
@@ -655,41 +606,33 @@ interface foo {
     too-slow,
   }
 
-  // a bitflags type
+  // 位标志(bitflags)类型
   flags permissions {
     read,
     write,
     exec,
   }
 
-  // type aliases are allowed to primitive types and additionally here are some
-  // examples of other types
+  // 基本类型允许使用类型别名，另外这里还有一些其他类型示例
   type t1 = u32;
   type t2 = tuple<u32, u64>;
   type t3 = string;
   type t4 = option<u32>;
-  type t5 = result<_, errno>;           // no "ok" type
-  type t6 = result<string>;             // no "err" type
-  type t7 = result<char, errno>;        // both types specified
-  type t8 = result;                     // no "ok" or "err" type
+  type t5 = result<_, errno>;           // 无"ok"类型
+  type t6 = result<string>;             // 无"err"类型
+  type t7 = result<char, errno>;        // 两种类型指定("ok"或"err")
+  type t8 = result;                     // 无"ok"或"err"类型
   type t9 = list<string>;
   type t10 = t9;
 }
 ```
 
-The `record`, `variant`, `enum`, and `flags` types must all have names
-associated with them. The `list`, `option`, `result`, `tuple`, and primitive
-types do not need a name and can be mentioned in any context. This restriction
-is in place to assist with code generation in all languages to leverage
-language-builtin types where possible while accommodating types that need to be
-defined within each language as well.
+`记录(record)`、`变量(variant)`、`枚举(enum)`、和`标志(flags)`类型都必须有与之关联的名称。`列表(list)`、`可选项(option)`、`结果(result)`、`元组(tuple)`和原始类型(primitive type)无需名称且可在任何上下文中提及。此限制是为了帮助在所有语言生成代码，尽可能地利用语言的内置类型，同时也适应哪些需要在美中语言中单独定义的类型。
 
-## WIT Identifiers
+## WIT标识符（WIT Identifiers）
 [identifiers]: #wit-identifiers
 
-Identifiers in WIT can be defined with two different forms. The first is the
-[kebab-case] [`label`](Explainer.md#import-and-export-names) production in the
-Component Model text format.
+WIT中的标识符可以使用两种不同的格式定义。第一种是组件模型文本格式中的[烤串命名法(kebab-case)][kebab-case][`label`](Explainer.md#import-and-export-names)。
 
 ```wit
 foo: func(bar: u32);
@@ -700,15 +643,14 @@ resource XML { ... }
 parse-XML-document: func(s: string) -> XML;
 ```
 
-This form can't lexically represent WIT keywords, so the second form is the
-same syntax with the same restrictions as the first, but prefixed with '%':
+这种格式在词汇上不能表示WIT关键字，因此第二种形式与第一种形式具有相同的语法和相同的限制，但以“％”为前缀：
 
 ```wit
 %foo: func(%bar: u32);
 
 %red-green-blue: func(%r: u32, %g: u32, %b: u32);
 
-// This form also supports identifiers that would otherwise be keywords.
+// 此表单还支持标识符，否则将是关键字。
 %variant: func(%enum: s32);
 ```
 
