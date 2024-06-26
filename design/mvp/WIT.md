@@ -977,7 +977,7 @@ use-names-item ::= id
 
 ### 项：`type`(别名)（Item: `type` (alias)）
 
-`type`语句在`wit`文档中声明一个新的命名类型。后续在使用此类型定义项时可以引用此名称。次构造类似于其他语言中的类型别名。
+`type`语句在`wit`文档中声明一个新的命名类型。后续在使用此类型定义项时可以引用此名称。此构造类似于其他语言中的类型别名。
 
 ```wit
 type my-awesome-u32 = u32;
@@ -990,7 +990,7 @@ type my-complicated-tuple = tuple<u32, s32, string>;
 type-item ::= 'type' id '=' ty ';'
 ```
 
-### 项：`record`(命名字段包)（Item: `record` (bag of named fields)）
+### 项：`record`(命名字段组)（Item: `record` (bag of named fields)）
 
 `record`语句声明一个具有命名字段的新命名结构。record类似于许多语言中的`struct`。`record`实例始终具有已定义的字段。
 
@@ -1018,9 +1018,9 @@ record-fields ::= record-field
 record-field ::= id ':' ty
 ```
 
-### 项：`flags`(布尔值包)（Item: `flags` (bag-of-bools)）
+### 项：`flags`(布尔值组)（Item: `flags` (bag-of-bools)）
 
-`flags`表示位集结构，每个位都有一个名称。该`flags`类型在规范ABI中表示为位标志表示。
+`flags`表示位集结构，每个位都有一个名称。该`flags`类型在规范ABI中表示为位标志(bit flags)表达。
 
 ```wit
 flags properties {
@@ -1041,11 +1041,11 @@ flags-fields ::= id
 
 ### 项：`variant` (类型集合中的一个)（Item: `variant` (one of a set of types)）
 
-`variant`语句定义了一种新类型，该类型的实例与其列出的变体之一完全匹配。这类似于代数数据类型中的"sum"类型（或者如果你熟悉 Rust，那就是`enum`）。变体(variant)也可以被认为是带标签的联合。
+`variant`语句定义了一种新类型，该类型的实例与其列出的变体之一完全匹配。这类似于代数数据类型中的"sum"类型（或者如果你熟悉 Rust，那就是`enum`）。变体(variant)也可以被认为是带标签的集合。
 
 variant的每个分支都可以有一个可选类型与之关联，当值具有该特定分支的标签时，这个类型就会出现。
 
-所有的`variant`类型必须至少指定一个分支。
+所有的`variant`类型必须至少指定一项(`variant-case`)。
 
 ```wit
 variant filter {
@@ -1067,7 +1067,7 @@ variant-case ::= id
                | id '(' ty ')'
 ```
 
-### 项：`enum`(无载荷的variant)（Item: `enum` (variant but with no payload)）
+### 项：`enum`（无载荷的variant）（Item: `enum` (variant but with no payload)）
 
 `enum`语句定义了一种新类型，其语义等同于`variant`，但无有效荷载类型的情况。然而，这种情况被特殊处理，可能在语言ABI中有不同的表示形式，或者针对不同的语言生成不同的绑定。
 
@@ -1092,7 +1092,7 @@ enum-cases ::= id
 
 ### 项：`resource`（Item: `resource`）
 
-`resource`语句为*资源*定义了一个新的抽象类型，资源时一种具有生命周期的实体，只能通过[句柄值(handle values)](#handles)间接地传递。资源类型在接口(interface)中用于描述不能活不应通过值复制的事物。
+`resource`语句为*资源*定义了一个新的抽象类型，资源是一种具有生命周期的实体，只能通过[句柄值(handle values)](#handles)间接地传递。资源类型在接口(interface)中用于描述不能或不应通过值复制的事物。
 
 例如，以下Wit定义了一种资源类型，以及一个接受并返回`blob`句柄的函数：
 ```wit
@@ -1100,7 +1100,7 @@ resource blob;
 transform: func(blob) -> blob;
 ```
 
-作为语法糖，resource语句也可以声明任意数量的*方法(methods)*，其隐式接收一个句柄类型的`self`参数的函数。resource语句还可以包含任意数量的*静态方法(static function)*，其没有隐式的`self`参数但应在词法上嵌套在资源类型的范围内。最后，资源语句最多可以包含一个*构造器(constructor)*函数，它是返回包含资源类型句柄的函数的语法糖。
+作为语法糖，resource语句也可以声明任意数量的*方法(methods)*，此函数隐式接收一个为句柄类型的`self`参数。资源(resource)语句还可以包含任意数量的*静态方法(static function)*，其没有隐式的`self`参数但应在词法上嵌套在资源类型的范围内。最后，资源语句最多可以包含一个*构造器*(*constructor*)函数，它是返回包含资源类型句柄的函数的语法糖。
 
 例如，以下资源定义：
 ```wit
@@ -1119,9 +1119,9 @@ resource blob;
 %[method]blob.read: func(self: borrow<blob>, n: u32) -> list<u8>;
 %[static]blob.merge: func(lhs: borrow<blob>, rhs: borrow<blob>) -> blob;
 ```
-这些以`%`为前缀的[`名称`](Explainer.md)嵌入了资源类型名称，以便绑定生成器可以为目标语言生成惯用语法，或者（对于像C这样的语义）回退到导游适当前缀的自由函数名称。、
+这些前缀为`%`的[`名称`](Explainer.md)嵌入了资源类型名称，以便绑定生成器可以为目标语言生成惯用语法，或者（对于像C这样的语义）回退到带有适当前缀的自由函数名称。
 
-当直接使用资源类型名称时（例如，当`blob`用作上述构造函数的返回值时），它代表“自有”句柄，当丢弃时将调用资源的析构函数。当资源类型名称被`borrow<...>`包裹时，它代表“借用”句柄，当丢弃时*不会*调用析构函数。如上所示，方法总是解析为一个借用self参数，而构造函数总是解析为一个拥有的返回值。
+当直接使用资源类型名称时（例如，当`blob`用作上述构造函数的返回值时），它代表“自有”句柄，当丢弃时将调用资源的析构函数。当资源类型名称被`borrow<...>`包裹时，它代表“借用”句柄，当丢弃时*不会*调用析构函数。如上所示，方法总是解析为一个借用的self参数，而构造函数总是解析为一个拥有的返回值。
 
 具体来说，资源定义的语法是：
 ```ebnf
@@ -1136,7 +1136,7 @@ resource-method ::= func-item
 
 ## 类型（Types）
 
-如前所述，`wit`旨在允许定义与接口类型规范相对应的类型。上面的许多顶层项都引入了新的命名类型，但也支持“匿名(anonymous)”类型，例如内置类型。例如：
+如前所述，`wit`旨在允许定义与接口类型规范相对应的类型。上面的许多顶级项都引入了新的命名类型，但也支持“匿名(anonymous)”类型，如内置的(built-ins)。例如：
 
 ```wit
 type number = u32;
@@ -1176,7 +1176,7 @@ result ::= 'result' '<' ty ',' ty '>'
 
 `tuple`类型在语义上等同于具有数值字段的`record`，但其经常可以具有特定于语言的含义，所以她被视为一种一等类型。
 
-类似地，`option`和`result类型在语义上等同于variant：  
+类似地，`option`和`result`类型在语义上等同于variant：  
 
 ```wit
 variant option {
@@ -1319,7 +1319,7 @@ interface namespace {
 此示例说明了接口的基本结构：
 * 每个顶层WIT定义（在此示例中为：`types`和`namespace`）都变成相同的烤串命名(kebab-name)的类型导出。
 * 每个WIT接口都映射到一个组件类型，该组件类型导出一个具有完全限定[接口名称][interface name]的实例（在此示例中为：`local:demo/types`和`local:demo/namespace`）。注意，此嵌套方案允许单个组件定义和实现WIT接口，而不会发生名称冲突。
-* 包装组件类型在接口中的每个`use`都有`import`，将所有`use`类型引入到作用域中，以便在构建实例类型时可以对它们进行别名化。组件类型可以被认为是“参数化”接口的编译实例类型（∀T.{instance type}）。注意，即使接口(interface)不包含`use`也*始终*存在外部包装组件类型。
+* 包装的组件类型中接口的每个`use`都会`import`，将所有`use`类型引入到作用域中，以便在构建实例类型时可以对它们进行别名化。组件类型可以被认为是“参数化”接口的编译实例类型（∀T.{instance type}）。注意，即使接口(interface)不包含`use`也*始终*存在外部包装的组件类型。
 
 这种编码方案的一个有用结果是每个顶层定义都是自包含的并且是有效的（根据组件模型验证规则），独立于其他定义。这允许轻松地拆分或合并包（假设结果不必是有效的包，而只是非导出类型定义的原始列表）。
 
@@ -1349,7 +1349,7 @@ interface foo {
 )
 ```
 
-世界(world)的编码与接口类似，但将内部导出的实例替换为内部导出的*组件*。例如，此WIT：
+世界(world)的编码与接口类似，但将内部导出的instance替换为内部导出的*component*。例如，此WIT：
 ```wit
 package local:demo;
 
