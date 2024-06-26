@@ -2,14 +2,13 @@
 
 Wasm接口类型（Wasm Interface Type, WIT）格式是一种[IDL]，它以两种主要方式为[WebAssembly组件模型][components]提供工具：
 
-* WIT是一种开发人员友好的格式，用于描述组件的导入和导出。其易于阅读和编写，并为使用客户语言生成组件以及使用宿主语言使用组件提供了基础。
+* WIT是一种开发人员友好的格式，用于描述组件的导入和导出。其易于阅读和编写，并为宾客语言(guest languages)生成组件及宿主语言(host languages)使用组件提供了基础。
 
-* WIT包是组件生态系统中共享类型和定义的基础。作者可以在生成组件时从其他WIT包导入类型，发布表示宿主嵌入的WIT包，或者协作制定跨平台共享API集的WIT定义。
+* WIT包是组件生态系统中共享类型和定义的基础。作者可以在生成组件时从其他WIT包导入类型、发布一个表示为宿主嵌入的WIT包，或者在跨平台共享API集合的WIT定义上协作。
 
-WIT包是在同一目录下以`wit`为扩展名的文件集合，其中定义了[`interfaces`][interfaces]和[`world`][worlds]，例如`foo.wit`。文件编码为有效的 utf-8 字节。可以使用非限定名称在包内的接口之间导入类型，还可以通过命名空间（namespace-
-and-package-qualified）和包限定名称从其他包导入类型。
+WIT包是在同一目录下以`wit`为扩展名的文件集合，其定义了[`interface`][interfaces]和[`world`][worlds]，例如`foo.wit`。文件编码为有效的utf-8字节。类型可以使用无限制的名称从包的接口(interface)导入，还可以使用限定的命名空间(namespace)和包(package)名从其他包导入。
 
-本文档将介绍WIT文档的句法结构的用途、伪形式[语法规范][lexical-structure]，以及适合分发的WIT包的[包格式(package format)][package-format]的规范。
+本文档将介绍WIT文档句法结构的用途、非正式[语法规范][lexical-structure](pseudo-formal grammar specification)，以及适合分发的WIT包的[包格式(package format)][package-format]规范。
 
 [IDL]: https://en.wikipedia.org/wiki/Interface_description_language
 [components]: https://github.com/webassembly/component-model
@@ -18,15 +17,15 @@ and-package-qualified）和包限定名称从其他包导入类型。
 
 所有WIT包均分配一个*包名*。包名类似于`foo:bar@1.0.0`，包含三个字段：
 
-* *命名空间字段（namespace field）*，例如`foo:bar`中的`foo`。此命名空间旨在消除注册表、顶层组织等之间的歧义。例如，WASI接口（WASI interfaces）使用`wasi`命名空间。
+* *命名空间字段（namespace field）*，例如`foo:bar`中的`foo`。此命名空间旨在消除注册表、顶级(top-level)组织等之间的歧义。例如，WASI接口使用`wasi`命名空间。
 
-* *包字段（package field）*，例如`wasi:clocks`中的`clocks`。“包”将一组interfaces和worlds组合在一起，否则它们会使用共同的前缀命名。
+* *包字段（package field）*，例如`wasi:clocks`中的`clocks`。“包(package)”将一组接口(interface)和世界(world)聚合，否则将使用共同的前缀命名。
 
 * *版本字段（version field）*[可选的], 定义为[full semver](https://semver.org/).
 
-🪺 使用“嵌套命名空间和包”，包名称类似于`foo:bar:baz/quux`，其中`bar`是`foo`的嵌套命名空间、`quux`是`baz`的嵌套包。有关更多详细信息，请参阅[包声明]部分。
+🪺 使用“嵌套命名空间和包”，包名称类似于`foo:bar:baz/quux`，其中`bar`是`foo`的嵌套命名空间、`quux`是`baz`的嵌套包。有关更多详细信息，请参阅[包声明][包声明package-declaration]部分。
 
-通过在WIT文件顶部声明`package`指定包名：
+在WIT文件顶部通过`package`声明指定包名：
 
 ```wit
 package wasi:clocks;
@@ -52,7 +51,7 @@ package local:b {
 }
 ```
 
-包名用于生成在组件模型中代表[导入名和导出名]的[`接口(interface)`][interfaces]和[`世界(world)`][worlds]，具体描述[如下](#package-format)。
+包名用于生成组件模型中表示[`接口(interface)`][interfaces]和[`世界(world)`]的[导入名和导出名]，具体描述[如下](#package-format)。
 
 [导入名和导出名]: Explainer.md#import-and-export-definitions
 
