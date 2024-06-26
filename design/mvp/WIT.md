@@ -813,7 +813,7 @@ interface i {
   @since(version = 1.0.1)
   type t1 = u32;
 
-  type t2 = t1; // error
+  type t2 = t1; // 错误
 }
 ```
 此外，如果某项*包含*在门控项中，则该项也必须兼容门控。例如，这是一个错误：
@@ -840,7 +840,7 @@ package-decl        ::= 'package' ( id ':' )+ id ( '/' id )* ('@' valid-semver)?
 
 ## 项：`toplevel-use`（Item: `toplevel-use`）
 
-文件顶层的`use`语句可以用于将接口引入当前文件的范围，并/或为了方便在本地重命名接口：
+文件顶级(top-level)的`use`语句可以用于将接口引入当前文件的范围，并/或为了方便在本地重命名接口：
 
 ```ebnf
 toplevel-use-item ::= 'use' use-path ('as' id)? ';'
