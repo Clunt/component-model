@@ -23,7 +23,7 @@ WIT包是在同一目录下以`wit`为扩展名的文件集合，其定义了[`i
 
 * *版本字段（version field）*[可选的], 定义为[full semver](https://semver.org/).
 
-🪺 使用“嵌套命名空间和包”，包名称类似于`foo:bar:baz/quux`，其中`bar`是`foo`的嵌套命名空间、`quux`是`baz`的嵌套包。有关更多详细信息，请参阅[包声明][包声明package-declaration]部分。
+🪺 使用“嵌套命名空间和包”，包名称类似于`foo:bar:baz/quux`，其中`bar`是`foo`的嵌套命名空间、`quux`是`baz`的嵌套包。有关更多详细信息，请参阅[包声明][package-declaration]部分。
 
 在WIT文件顶部通过`package`声明指定包名：
 
@@ -1262,31 +1262,11 @@ record bar2 {
 ```
 
 # 包格式（Package Format）
-[package-format]: #package-format
+[package-format]: #包格式package-format
 
 每个顶层WIT定义可以编译成单个规范的组件模型[类型定义(type definition)](Explainer.md#type-definitions)，该定义捕获上述类型解析执行的结果。这些组件模型类型可以与其他类别和导出的组件一同被导出，从而允许单个组件同时打包运行时功能和开发时WIT接口。因此，WIT不需要自己单独的包格式；WIT可以作为组件二进制打包。
 
 以这种方式使用组件二进制文件打包WIT有几个优点：
-* We get to reuse the [binary format](Binary.md) of components, especially the
-  tricky type bits.
-* Downstream tooling does not need to replicate the resolution logic nor the
-  resolution environment (directories, registries, paths, arguments, etc) of
-  the WIT package producer; it can reuse the simpler compiled result.
-* Many aspects of the WIT syntax can evolve over time without breaking
-  downstream tooling, similar to what has happened with the Core WebAssembly
-  WAT text format over time.
-* When components are published in registries and assigned names (see the
-  discussion of naming in [Import and Export Definitions](Explainer.md#import-and-export-definitions)),
-  WIT interfaces and worlds can be published with the same tooling and named
-  using the same `namespace:package/export` naming scheme.
-* A single package can both contain an implementation and a collection of
-  `interface` and `world` definitions that are imported by that implementation
-  (e.g., an engine component can define and exports its own plugin `world`).
-
-As a first example, the following WIT:
-
-
-
 * 我们可以重用组件的[二进制格式](Binary.md)，特别是棘手的类型位。
 * 下游工具不需要复制WIT包生产者者的解析逻辑或解析环境（目录，注册表，路径，参数等）；它可以重用更简单的编译结果。
 * WIT语法的许多方面可以随着时间的推移演变，而不会破坏下游工具，这与Core WebAssembly WAT文本格式随着时间的推移发生的情况类似。
