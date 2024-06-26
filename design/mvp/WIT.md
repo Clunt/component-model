@@ -1,4 +1,4 @@
-# `wit`格式
+# `wit`格式（The wit format）
 
 Wasm接口类型（Wasm Interface Type, WIT）格式是一种[IDL]，它以两种主要方式为[WebAssembly组件模型][components]提供工具：
 
@@ -55,10 +55,10 @@ package local:b {
 
 [导入名和导出名]: Explainer.md#import-and-export-definitions
 
-## WIT接口（Interfaces）
-[interfaces]: #wit-interfaces
+## WIT接口（WIT Interfaces）
+[interfaces]: #wit接口wit-interfaces
 
-“接口”的概念是WIT的核心，它是[函数(functions)]和[类型(types)]的集合。接口可以被视为WebAssembly组件模型中的一个实例，例如从宿主导入或由组件实现的供宿主使用的功能单元。所有函数和类型都属于接口。
+“接口(interface)”的概念是WIT的核心，它是[函数(function)][functions]和[类型(type)][types]的集合。接口可以被视为WebAssembly组件模型中的一个实例，例如，从宿主导入或由组件实现供宿主消费的功能单元。所有函数和类型都属于接口。
 
 接口示例：
 
@@ -81,7 +81,7 @@ interface host {
 )
 ```
 
-一个接口`interface`可以包含[`use`][use]语句, [type][types]定义和[function][functions]定义。例如：
+一个接口`interface`可以包含[`use`][use]语句, [类型][types]定义和[函数][functions]定义。例如：
 
 ```wit
 package wasi:filesystem;
@@ -100,14 +100,14 @@ interface types {
 }
 ```
 
-有关[`use`][use]和[types]的更多信息将在下文中介绍，但这是`interface`中项目集合的示例。`interface`中定义的所有项目（包括[`use`][use]），均被视为接口的导出。这意味着此interface的types可被其他interface使用。接口具有单个命名空间，这意味着定义的名称都不会发生冲突。
+有关[`use`][use]和[类型][types]的更多信息将在下文中介绍，但此为`interface`内部项集合的示例。`interface`中定义的所有项（包括[`use`][use]），均被视为接口的导出。这意味着此interface的类型可被其他interface使用。接口具有单个命名空间，这意味着定义的名称都不会发生冲突。
 
-WIT包可以包含任意数量的接口(interface)，这些接口在顶层列出且顺序任意。WIT验证器将确保接口之间的所有引用都是格式正确且无循环的。
+WIT包可以包含任意数量的接口(interface)，这些接口在顶级(top-level)列出且顺序任意。WIT验证器将确保接口之间的所有引用都是格式正确且无环的。
 
-## WIT世界（Worlds）
-[worlds]: #wit-worlds
+## WIT世界（WIT Worlds）
+[worlds]: #wit世界wit-worlds
 
-除了[`interface`][interfaces]定义之外，WIT包还可以在顶层包含`world`定义。world是组件导入和导出的完整描述。世界(world)可以被视为组件模型中`component`类型的等价物。例如：
+除了[`interface`][interfaces]定义之外，WIT包还可以在顶级(top-level)包含`world`定义。world是组件导入和导出的完整描述。world可以被视为组件模型中`component`类型的等价物。例如：
 
 ```wit
 package local:demo;
@@ -132,9 +132,9 @@ world my-world {
 ))
 ```
 
-世界描述了一个具体的组件，是生成绑定的基础。客户语言将使用`world`来确定导入并命名哪些函数、导出哪些函数及其名称。
+世界描述了一个具体的组件，是生成绑定的基础。来宾语言将使用`world`来确定导入并命名哪些函数、导出哪些函数及其名称。
 
-世界可以包含任意数量的导入和导出，并且可以是函数(function)或接口(interface)。
+世界可以包含任意数量的导入和导出，并且可以为函数(function)或接口(interface)。
 
 ```wit
 package local:demo;
@@ -151,7 +151,7 @@ world command {
 
 有关`wasi:random/random`语法的更多信息，请参阅下方[`use`][use]描述。
 
-导入或导出接口对应于组件模型中的导入或导出实例。函数相当于裸组件函数(bare component functions)。此外，接口可以用显式的[简单名称(plain name)][plain name]内联定义，从而避免了外联定义需要。
+导入或导出接口对应于组件模型中的导入或导出实例。函数相当于裸组件函数(bare component functions)。此外，接口可以用显式的[纯名称(plain name)][plain name]内联定义，从而避免了外联定义需要。
 
 ```wit
 package local:demo;
@@ -169,9 +169,9 @@ world your-world {
 }
 ```
 
-`import`或`export`语句的简单名称用于组件`import`或`export`最终定义的简单名称。
+`import`或`export`语句的纯名称用作最终组件`import`或`export`定义的纯名称。
 
-在组件模型中导入组件可以使用简单名称(plain name)或接口名称(interface name)，在WIT中对应的语法：
+在组件模型中，导入组件可以使用纯名称(plain name)或接口名称(interface name)，在WIT中对应的语法：
 
 ```wit
 package local:demo;
@@ -181,16 +181,16 @@ interface my-interface {
 }
 
 world command {
-  // 生成导入接口名称 `local:demo/my-interface`
+  // 生成接口名称`local:demo/my-interface`的导入
   import my-interface;
 
-  // 生成导入接口名称 `wasi:filesystem/types`
+  // 生成接口名称`wasi:filesystem/types`的导入
   import wasi:filesystem/types;
 
-  // 生成导入简单名称 `foo`
+  // 生成纯名称`foo`的导入
   import foo: func();
 
-  // 生成导入简单名称 `bar`
+  // 生成纯名称`bar`的导入
   import bar: interface {
     // ...
   }
@@ -201,7 +201,7 @@ world command {
 
 [Plain Name]: Explainer.md#import-and-export-definitions
 
-### 通过`include`合并多个世界(world)
+### 通过`include`合并多个世界（Union of Worlds with `include`）
 
 可以通过合并两个或多个world来创建一个world。此操作允许从较小的world构建更大的world。
 
@@ -210,7 +210,7 @@ world command {
 ```wit
 package local:demo;
 
-// definitions of a, b, c, foo, bar, baz are omitted
+// 省略了a、b、c、foo、bar、baz的定义
 
 world my-world-a {
     import a;
@@ -230,7 +230,7 @@ world union-my-world {
 }
 ```
 
-该`include`语句用于将另一个world的导入和导出引入当前world。它表示新world能够运行针对所包含world的所有组件等。
+该`include`语句用于将另一个world的导入和导出引入当前world。它表示新的world应能运行其包含world的全部组件及更多。
 
 上面定义的`union-my-world`等同于下面的world：
 
@@ -245,9 +245,9 @@ world union-my-world {
 }
 ```
 
-### 接口去重
+### 接口去重（De-duplication of interfaces）
 
-如果两个world共享一个导入或导出[接口名称][interface name]，则两个world的并集将金包含该导入或导出名称的一个副本。例如，下面的两个世界`union-my-world-a`和`union-my-world-b`是等效的：
+如果两个world共享一个导入或导出[接口名称][interface name]，则两个world的并集将仅包含该导入或导出名称的一个副本。例如，下面的两个世界`union-my-world-a`和`union-my-world-b`是等效的：
 
 ```wit
 package local:demo;
@@ -273,9 +273,9 @@ world union-my-world-b {
 }
 ```
 
-### 名称冲突及`with`
+### 名称冲突及`with`（Name Conflicts and `with`）
 
-当两个或多个包含的world对于具有*plain* name的导入或导出具有相同的名称时，不能使用自动重复数据删除（因为两个同名的导入/导出在不同的 World 中可能有不同的含义），因此必须使用关键字`with`手动解决冲突。
+当包含两个或更多world的导入或导出的纯名称(*plain* name)同名时，不能使用自动重复数据删除（因为两个同名的导入/导出在不同的world中可能有不同的含义），因此必须使用关键字`with`手动解决冲突。
 
 以下示例说明如何解决`union-my-world-a`和`union-my-world-b`等效的名称冲突：
 ```wit
@@ -295,7 +295,7 @@ world union-my-world-b {
 }
 ```
 
-但是`with`不能用于重命名接口名称，因此以下世界将是无效的：
+但是`with`不能用于重命名接口名称，因此以下world将是错误的：
 ```wit
 package local:demo;
 
@@ -308,25 +308,25 @@ world world-using-a {
 }
 
 world invalid-union-world {
-    include my-using-a with { a as b }  // invalid: 'a'是'local:demo/a'的缩写，是一个接口名称
+    include my-using-a with { a as b }  // 错误：'a'是'local:demo/a'的缩写，为接口名称
 }
 
 ```
 
-### 关于子类型的注释
+### 关于子类型的注释（A Note on Subtyping）
 
-将来当支持导出`optional`时，world作者可能会明确将导出标记为可选，以使针对包含的世界的组件成为union world的子类型。
+未来，当支持`optional`导出时，world的作者可能会显示地标记导出为可选，以使一个目标为包含world的组件成为联合世界(union World)的子类型。
 
-目前，我们不遵循该`include`语句的子类型规则。也就是说，该`include`语句不暗示所包含的世界与联合世界之间的任何子类型关系。
+目前，我们不遵循该`include`语句的子类型规则。也就是说，该`include`语句不隐含任何其包含世界与联合世界之间的子类型关系。
 
-## WIT包(Packages)和`use`
-[use]: #wit-packages-and-use
+## WIT包和`use`（WIT Packages and `use`）
+[use]: #wit包和usewit-packages-and-use
 
 WIT包表示分发单元，例如，可以发布到注册表并由其他WIT包使用。WIT包是`*.wit`文件中定义的一系列接口(interface)和世界(world)的集合。目前的惯例是，项目都会有一个`wit`文件夹，其中所有的`wit/*.wit`文件联合起来描述一个完整的包。
 
-`use`语句的目的是接口之间共享类型，即使它们在当前包之外的依赖项中定义。`use`语句可以在interface和world中使用，也可以用在WIT文件的顶层。
+`use`语句的目的是接口之间共享类型，即使它们在当前包之外的依赖项中定义。`use`语句可以在interface和world中使用，也可以用在WIT文件的顶级(top-level)。
 
-#### 接口(interface)、世界(world)、和`use`
+#### 接口、世界、和`use`（Interfaces, worlds, and use）
 
 `interface`或`world`块内的`use`语句可用于导入类型：
 
@@ -550,7 +550,7 @@ world w2 {
 > **注意**：未来计划使用“高级用户语法”来更细粒度地配置导出，例如能够配置某个use接口是特定的导入还是特定的导出。
 
 ## WIT函数（WIT Functions）
-[functions]: #wit-functions
+[functions]: #wit函数wit-functions
 
 函数定义于[`interface`][interfaces]，或在[`world`][worlds]中列为`import`或`export`。函数参数必须全部命名，并且名称在不区分大小写的情况下是唯一的：
 
@@ -588,7 +588,7 @@ interface foo {
 请注意，从函数返回多个值并不等同于从函数返回一组值。这些选项在组件二进制格式中以不同的方式表示。
 
 ## WIT类型（WIT Types）
-[types]: #wit-types
+[types]: #wit类型wit-types
 
 目前，WIT文件只能在[`interface`][interfaces]中定义类型。WIT中支持的类型与组件模型本身支持的类型相同：
 
@@ -828,7 +828,7 @@ interface i {
 ```
 
 ## 包声明（Package declaration）
-[package declaration]: #package-declaration
+[package declaration]: #包声明package-declaration
 
 WIT文件可以选择以定义包名称的包声明开头。
 
