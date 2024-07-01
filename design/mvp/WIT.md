@@ -1132,7 +1132,7 @@ resource-method ::= func-item
                   | 'constructor' param-list ';'
 ```
 
-句柄类型的语法[如下](#handles)所示。
+句柄类型的语法[如下](#句柄handles)所示。
 
 ## 类型（Types）
 
